@@ -24,7 +24,6 @@ class _MainDiscoverScreenState extends ConsumerState<MainDiscoverScreen>
   late TabController _tabController;
   late PageController _pageController;
   int _currentIndex = 0;
-  final Map<String, bool> _followedCreators = {};
   final Map<String, bool> _likedReels = {};
   final _firestoreService = FirestoreService();
   List<FirebaseReelModel> _reels = [];
@@ -43,21 +42,34 @@ class _MainDiscoverScreenState extends ConsumerState<MainDiscoverScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: _categories.length, vsync: this);
+    _tabController.addListener(_onCategoryChanged);
     _pageController = PageController();
     _loadReels();
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_onCategoryChanged);
     _tabController.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
+  void _onCategoryChanged() {
+    if (_tabController.indexIsChanging) return;
+    _currentIndex = 0;
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(0);
+    }
+    _loadReels();
+  }
+
   Future<void> _loadReels() async {
     setState(() => _isLoading = true);
     try {
-      final reels = await _firestoreService.getDiscoverReels();
+      final reels = await _firestoreService.getDiscoverReels(
+        eventType: _selectedEventType,
+      );
       final providerIds = reels.map((r) => r.providerId).toSet().toList();
       final providers = await Future.wait(
         providerIds.map((id) => _firestoreService.getProvider(id)),
@@ -133,7 +145,6 @@ class _MainDiscoverScreenState extends ConsumerState<MainDiscoverScreen>
 
   Widget _buildReelPage(FirebaseReelModel reel, int index) {
     final provider = _providerCache[reel.providerId];
-    final isFollowing = _followedCreators[reel.providerId] ?? false;
     final isActive = index == _currentIndex;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final reelId = reel.reelId;
@@ -373,15 +384,6 @@ class _MainDiscoverScreenState extends ConsumerState<MainDiscoverScreen>
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Follow Button
-                          _buildFollowButton(
-                            isFollowing: isFollowing,
-                            onTap: () {
-                              setState(() {
-                                _followedCreators[reel.providerId] = !isFollowing;
-                              });
-                            },
-                          ),
                         ],
                       ),
                     )
@@ -694,79 +696,18 @@ class _MainDiscoverScreenState extends ConsumerState<MainDiscoverScreen>
     return type[0].toUpperCase() + type.substring(1);
   }
 
-  Widget _buildFollowButton({
-    required bool isFollowing,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-          decoration: BoxDecoration(
-            color: isFollowing
-                ? Colors.white.withValues(alpha: 0.2)
-                : AppColors.primary,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isFollowing
-                  ? Colors.white.withValues(alpha: 0.3)
-                  : Colors.transparent,
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: (isFollowing ? Colors.white : AppColors.primary)
-                    .withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Text(
-            isFollowing ? 'Following' : 'Follow',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _getEventColor(String eventType) {
-    switch (eventType.toLowerCase()) {
-      case 'wedding':
-        return AppColors.wedding;
-      case 'birthday':
-        return AppColors.birthday;
-      case 'engagement':
-        return AppColors.engagement;
-      case 'corporate':
-        return AppColors.corporate;
+  String? get _selectedEventType {
+    switch (_tabController.index) {
+      case 1:
+        return 'wedding';
+      case 2:
+        return 'birthday';
+      case 3:
+        return 'corporate';
+      case 4:
+        return 'engagement';
       default:
-        return AppColors.primary;
-    }
-  }
-
-  IconData _getEventIcon(String eventType) {
-    switch (eventType.toLowerCase()) {
-      case 'wedding':
-        return Icons.favorite;
-      case 'birthday':
-        return Icons.cake;
-      case 'engagement':
-        return Icons.diamond;
-      case 'corporate':
-        return Icons.business;
-      default:
-        return Icons.celebration;
+        return null;
     }
   }
 

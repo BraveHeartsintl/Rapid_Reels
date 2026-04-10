@@ -257,6 +257,7 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
             children: [
               // Header Row
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Event Type Icon
                   Container(
@@ -281,6 +282,9 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
                         Text(
                           booking.eventName,
                           style: AppTypography.titleMedium,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: true,
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -288,13 +292,19 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
                           style: AppTypography.bodySmall.copyWith(
                             color: AppColors.textSecondary,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
                   
                   // Status Badge
-                  _buildStatusBadge(booking.status),
+                  const SizedBox(width: 8),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 130),
+                    child: _buildStatusBadge(booking.status),
+                  ),
                 ],
               ),
               
@@ -370,18 +380,34 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
               if (booking.status == 'confirmed' || booking.status == 'ongoing')
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: CustomButton(
-                          text: 'View Details',
-                          onPressed: () {
-                            context.push('${AppRoutes.eventDetails2}/${booking.bookingId}');
-                          },
-                          height: 40,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        context.push('${AppRoutes.eventDetails2}/${booking.bookingId}');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        minimumSize: const Size.fromHeight(54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                    ],
+                      child: const Text(
+                        'View Details',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -436,7 +462,10 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
         icon = Icons.help;
     }
     
-    return Container(
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerRight,
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.2),
@@ -456,6 +485,7 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 

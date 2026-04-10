@@ -182,25 +182,7 @@ class _ProviderDetailsScreenState extends ConsumerState<ProviderDetailsScreen>
                     ],
                   ),
                 ),
-                actions: [
-              IconButton(
-                icon: const Icon(Icons.share),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Sharing provider...')),
-                  );
-                },
               ),
-              IconButton(
-                icon: const Icon(Icons.favorite_border),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Added to favorites!')),
-                  );
-                },
-              ),
-            ],
-          ),
 
           // Content
           SliverToBoxAdapter(
