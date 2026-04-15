@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/provider_app_colors.dart';
 
 /// Primary gradient CTA for the provider portal (rounded, bold Poppins label).
@@ -63,36 +64,121 @@ class ProviderGradientButton extends StatelessWidget {
             ],
           );
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: canTap ? onPressed : null,
+    return Container(
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(borderRadius),
-            gradient: showGradient ? ProviderAppColors.primaryGradient : null,
-            color: showGradient ? null : ProviderAppColors.surfaceElevated,
-            boxShadow: showGradient
-                ? [
-                    BoxShadow(
-                      color: ProviderAppColors.primary.withValues(alpha: 0.35),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+        boxShadow: showGradient
+            ? [
+                BoxShadow(
+                  color: ProviderAppColors.primary.withValues(alpha: 0.38),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: AppColors.primarySpecular.withValues(alpha: 0.22),
+                  blurRadius: 14,
+                  spreadRadius: -2,
+                  offset: const Offset(0, -2),
+                ),
+              ]
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: showGradient ? ProviderAppColors.primaryGradient : null,
+                  color: showGradient ? null : ProviderAppColors.surfaceElevated,
+                ),
+              ),
+            ),
+            if (showGradient)
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGlossOverlay,
                     ),
-                  ]
-                : null,
-          ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minWidth: fullWidth ? double.infinity : 0,
-              minHeight: minHeight,
+                  ),
+                ),
+              ),
+            if (showGradient)
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGlossBloomOverlay,
+                    ),
+                  ),
+                ),
+              ),
+            if (showGradient)
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryTopEdgeGlossOverlay,
+                    ),
+                  ),
+                ),
+              ),
+            if (showGradient)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: minHeight * 0.34,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withValues(alpha: 0.5),
+                          AppColors.primarySpecular.withValues(alpha: 0.22),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.35, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            if (showGradient)
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryMetallicStreakOverlay,
+                    ),
+                  ),
+                ),
+              ),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: canTap ? onPressed : null,
+                borderRadius: BorderRadius.circular(borderRadius),
+                splashColor: Colors.white24,
+                highlightColor: Colors.white10,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: fullWidth ? double.infinity : 0,
+                    minHeight: minHeight,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    child: Center(child: child),
+                  ),
+                ),
+              ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              child: Center(child: child),
-            ),
-          ),
+          ],
         ),
       ),
     );

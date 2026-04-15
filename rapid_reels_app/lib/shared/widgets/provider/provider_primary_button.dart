@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/provider_app_colors.dart';
 
+import 'provider_gradient_button.dart';
+
+/// Same glossy metallic treatment as [ProviderGradientButton], pill radius 20.
 class ProviderPrimaryButton extends StatelessWidget {
   const ProviderPrimaryButton({
     super.key,
@@ -17,27 +19,12 @@ class ProviderPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = FilledButton(
+    final child = ProviderGradientButton(
       onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: ProviderAppColors.primary,
-        foregroundColor: ProviderAppColors.onPrimary,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 20),
-            const SizedBox(width: 8),
-          ],
-          Text(label),
-        ],
-      ),
+      label: label,
+      icon: icon != null ? Icon(icon) : null,
+      fullWidth: expanded,
+      borderRadius: 20,
     );
     if (expanded) {
       return SizedBox(width: double.infinity, child: child);

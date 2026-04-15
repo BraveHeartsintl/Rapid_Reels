@@ -10,6 +10,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../shared/widgets/custom_button.dart';
 import '../providers/auth_provider.dart';
 
 class OTPVerificationScreen extends ConsumerStatefulWidget {
@@ -351,27 +352,11 @@ class _OTPVerificationScreenState extends ConsumerState<OTPVerificationScreen> {
               const SizedBox(height: 32),
 
               // Verify Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _verifyOtp,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Verify & Login'),
-                ),
+              CustomButton(
+                text: 'Verify & Login',
+                onPressed: _isLoading ? null : _verifyOtp,
+                isLoading: _isLoading,
+                borderRadius: 12,
               ),
               const SizedBox(height: 24),
 

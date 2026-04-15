@@ -8,6 +8,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/utils/helpers.dart';
+import '../../../../shared/widgets/custom_button.dart';
 import '../providers/auth_provider.dart';
 
 class PhoneLoginScreen extends ConsumerStatefulWidget {
@@ -318,23 +319,13 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                 const SizedBox(height: 32),
 
                 // Send OTP Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: (_isLoading || _rateLimitSeconds > 0) ? null : _sendOTP,
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : _rateLimitSeconds > 0
-                            ? Text('Wait ${_formatTime(_rateLimitSeconds)}')
-                            : const Text(AppStrings.sendOTP),
-                  ),
+                CustomButton(
+                  text: _rateLimitSeconds > 0
+                      ? 'Wait ${_formatTime(_rateLimitSeconds)}'
+                      : AppStrings.sendOTP,
+                  onPressed: (_isLoading || _rateLimitSeconds > 0) ? null : _sendOTP,
+                  isLoading: _isLoading,
+                  borderRadius: 12,
                 ),
                 // Rate limit message
                 if (_rateLimitSeconds > 0)

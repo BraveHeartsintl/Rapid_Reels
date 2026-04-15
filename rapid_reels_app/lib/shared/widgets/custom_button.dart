@@ -43,17 +43,78 @@ class CustomButton extends StatelessWidget {
   Widget _buildButton(BuildContext context) {
     switch (type) {
       case ButtonType.primary:
-        return ElevatedButton(
-          onPressed: isLoading ? null : onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: color ?? AppColors.primary,
-            foregroundColor: textColor ?? AppColors.onPrimary,
-            shape: RoundedRectangleBorder(
+        return Material(
+          color: Colors.transparent,
+          child: Ink(
+            decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(borderRadius),
+              gradient: color == null
+                  ? AppColors.primaryGradient
+                  : LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [color!, color!],
+                    ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.28),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
-            elevation: 0,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(borderRadius),
+              child: Stack(
+                fit: StackFit.passthrough,
+                children: [
+                  const Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: AppColors.primaryGlossOverlay,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: AppColors.primaryGlossBloomOverlay,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: AppColors.primaryMetallicStreakOverlay,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: isLoading ? null : onPressed,
+                      borderRadius: BorderRadius.circular(borderRadius),
+                      child: Center(
+                        child: IconTheme(
+                          data: IconThemeData(color: textColor ?? AppColors.onPrimary),
+                          child: DefaultTextStyle.merge(
+                            style: TextStyle(color: textColor ?? AppColors.onPrimary),
+                            child: _buildButtonContent(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          child: _buildButtonContent(),
         );
       case ButtonType.secondary:
         return ElevatedButton(

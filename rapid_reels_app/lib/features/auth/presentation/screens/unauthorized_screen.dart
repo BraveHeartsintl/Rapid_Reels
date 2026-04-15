@@ -9,6 +9,7 @@ import '../../../../core/router/router_refresh_notifier.dart';
 import '../../../../core/session/user_session_cleanup.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../../shared/widgets/custom_button.dart';
 
 class UnauthorizedScreen extends ConsumerWidget {
   const UnauthorizedScreen({super.key});
@@ -48,27 +49,25 @@ class UnauthorizedScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
+              CustomButton(
+                text: 'Back to login',
+                onPressed: () async {
+                  final uid = FirebaseAuth.instance.currentUser?.uid;
+                  ref.read(staticAdminSessionProvider.notifier).state = false;
+                  AdminRouteCache.invalidate();
+                  appRouterAuthRefresh.refresh();
+                  try {
+                    await FirebaseAuth.instance.signOut();
+                  } catch (_) {}
+                  if (uid != null) {
+                    invalidateUserSessionProviders(ref, uid);
+                  }
+                  if (context.mounted) {
+                    context.go(AppRoutes.login);
+                  }
+                },
+                borderRadius: 12,
                 height: 48,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final uid = FirebaseAuth.instance.currentUser?.uid;
-                    ref.read(staticAdminSessionProvider.notifier).state = false;
-                    AdminRouteCache.invalidate();
-                    appRouterAuthRefresh.refresh();
-                    try {
-                      await FirebaseAuth.instance.signOut();
-                    } catch (_) {}
-                    if (uid != null) {
-                      invalidateUserSessionProviders(ref, uid);
-                    }
-                    if (context.mounted) {
-                      context.go(AppRoutes.login);
-                    }
-                  },
-                  child: const Text('Back to login'),
-                ),
               ),
             ],
           ),

@@ -115,10 +115,12 @@ class ProviderAppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: ProviderAppColors.primary,
           foregroundColor: ProviderAppColors.onPrimary,
-          elevation: 0,
+          elevation: 2,
+          shadowColor: ProviderAppColors.primary.withValues(alpha: 0.35),
+          surfaceTintColor: ProviderAppColors.primaryMid.withValues(alpha: 0.3),
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: GoogleFonts.poppins(
             fontSize: 15,
@@ -132,11 +134,17 @@ class ProviderAppTheme {
           foregroundColor: ProviderAppColors.onPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
+          elevation: 2,
+          shadowColor: ProviderAppColors.primary.withValues(alpha: 0.35),
           textStyle: GoogleFonts.poppins(
             fontSize: 15,
             fontWeight: FontWeight.w700,
+          ),
+        ).copyWith(
+          surfaceTintColor: WidgetStatePropertyAll(
+            ProviderAppColors.primaryMid.withValues(alpha: 0.28),
           ),
         ),
       ),
@@ -146,7 +154,7 @@ class ProviderAppTheme {
           side: const BorderSide(color: ProviderAppColors.primary, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
@@ -156,6 +164,9 @@ class ProviderAppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: ProviderAppColors.primary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

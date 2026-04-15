@@ -380,34 +380,13 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
               if (booking.status == 'confirmed' || booking.status == 'ongoing')
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        context.push('${AppRoutes.eventDetails2}/${booking.bookingId}');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        minimumSize: const Size.fromHeight(54),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: const Text(
-                        'View Details',
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.visible,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          height: 1.3,
-                        ),
-                      ),
-                    ),
+                  child: CustomButton(
+                    text: 'View Details',
+                    onPressed: () {
+                      context.push('${AppRoutes.eventDetails2}/${booking.bookingId}');
+                    },
+                    borderRadius: 16,
+                    height: 54,
                   ),
                 ),
             ],

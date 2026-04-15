@@ -61,10 +61,29 @@ class AppTheme {
           foregroundColor: AppColors.onPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 0,
+          elevation: 2,
+          shadowColor: AppColors.primary.withValues(alpha: 0.35),
+          surfaceTintColor: AppColors.primarySpecular.withValues(alpha: 0.32),
           textStyle: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+      ),
+
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.onPrimary,
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 2,
+          shadowColor: AppColors.primary.withValues(alpha: 0.35),
+        ).copyWith(
+          surfaceTintColor: WidgetStatePropertyAll(
+            AppColors.primarySpecular.withValues(alpha: 0.3),
+          ),
         ),
       ),
 
@@ -74,7 +93,7 @@ class AppTheme {
           side: const BorderSide(color: AppColors.primary, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
@@ -83,6 +102,9 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           textStyle: AppTypography.buttonMedium,
         ),
       ),
