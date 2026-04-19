@@ -8,6 +8,36 @@
   },
   "functions": {
     "source": "functions"
+  },
+  "hosting": {
+    "public": "share_web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/share/manifest",
+        "function": "getBookingShareManifest"
+      },
+      {
+        "source": "/api/share/download",
+        "function": "downloadBookingShareZip"
+      },
+      {
+        "source": "/api/share/upload-target",
+        "function": "createBookingShareUploadTarget"
+      },
+      {
+        "source": "/api/share/upload-finalize",
+        "function": "finalizeBookingShareUpload"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }
 

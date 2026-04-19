@@ -41,6 +41,21 @@ class FirebaseProviderModel {
   final DateTime updatedAt;
   final Map<String, dynamic>? metadata;
 
+  String get veriffStatus {
+    final meta = metadata;
+    if (meta == null) return verificationStatus == 'approved' ? 'approved' : 'not_started';
+    final veriff = meta['veriff'];
+    if (veriff is Map<String, dynamic>) {
+      return (veriff['status'] as String?)?.toLowerCase() ??
+          (verificationStatus == 'approved' ? 'approved' : 'not_started');
+    }
+    if (veriff is Map) {
+      return (veriff['status'] as String?)?.toLowerCase() ??
+          (verificationStatus == 'approved' ? 'approved' : 'not_started');
+    }
+    return verificationStatus == 'approved' ? 'approved' : 'not_started';
+  }
+
   FirebaseProviderModel({
     required this.providerId,
     required this.businessName,

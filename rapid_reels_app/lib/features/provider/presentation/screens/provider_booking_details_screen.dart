@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/constants/app_routes.dart';
 import '../../../../core/theme/provider_app_colors.dart';
 import '../../../../shared/widgets/provider/provider_gradient_button.dart';
 import '../../../../core/firebase/models/firebase_booking_model.dart';
@@ -290,7 +292,16 @@ class ProviderBookingDetailsScreen extends StatelessWidget {
                   ),
                 ],
               )
-            else if (booking.status == 'confirmed' || booking.status == 'ongoing')
+            else if (booking.status == 'confirmed')
+              Column(
+                children: [
+                  ProviderGradientButton(
+                    onPressed: () => _markAsArrived(context, booking, firestoreService),
+                    label: 'Mark Arrived',
+                  ),
+                ],
+              )
+            else if (booking.status == 'ongoing')
               Column(
                 children: [
                   ProviderGradientButton(
@@ -299,6 +310,16 @@ class ProviderBookingDetailsScreen extends StatelessWidget {
                   ),
                 ],
               ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () {
+                context.push(
+                  '${AppRoutes.providerBookingDrive}/$providerId/${booking.bookingId}',
+                );
+              },
+              icon: const Icon(Icons.folder_open),
+              label: const Text('Open Booking Drive'),
+            ),
           ],
         ),
       ),
@@ -502,6 +523,29 @@ class ProviderBookingDetailsScreen extends StatelessWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to mark done: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  static Future<void> _markAsArrived(
+    BuildContext context,
+    FirebaseBookingModel booking,
+    FirestoreService firestoreService,
+  ) async {
+    try {
+      await firestoreService.updateBooking(booking.bookingId, {
+        'status': 'ongoing',
+        'eventStatus.eventStarted': Timestamp.now(),
+      });
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Marked as arrived'), backgroundColor: Colors.green),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to mark arrived: $e'), backgroundColor: Colors.red),
       );
     }
   }

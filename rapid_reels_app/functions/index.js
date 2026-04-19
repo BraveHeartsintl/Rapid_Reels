@@ -5,10 +5,27 @@ const {defineSecret} = require("firebase-functions/params");
 require("dotenv").config();
 const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
-const Stripe = require("stripe");
-const invoiceEmail = require("./invoice_email");
+const crypto = require("crypto");
+const archiver = require("archiver");
 
 admin.initializeApp();
+
+let StripeCtor = null;
+let invoiceEmailModule = null;
+
+function getStripeCtor() {
+  if (!StripeCtor) {
+    StripeCtor = require("stripe");
+  }
+  return StripeCtor;
+}
+
+function getInvoiceEmailModule() {
+  if (!invoiceEmailModule) {
+    invoiceEmailModule = require("./invoice_email");
+  }
+  return invoiceEmailModule;
+}
 
 /**
  * Rebuild Firestore Timestamp values from Flutter callable JSON
@@ -37,6 +54,219 @@ function reviveFirestoreTimestamps(value) {
 }
 
 const BLOCKING_BOOKING_STATUSES = ["pending", "confirmed", "ongoing"];
+const BOOKING_DRIVE_ORIGINAL_FOLDER = "original_photos_videos";
+const BOOKING_DRIVE_EDITED_FOLDER = "edited_deliverables";
+const SHARE_TOKEN_BYTES = 24;
+const SHARE_LINK_ROUTE_PREFIX = "/share";
+const MAX_SHARE_UPLOAD_BYTES = 500 * 1024 * 1024;
+const ALLOWED_SHARE_UPLOAD_ROLES = new Set(["provider", "editor"]);
+const ALLOWED_MIME_PREFIXES = ["image/", "video/"];
+
+function normalizeHost(rawHost) {
+  if (!rawHost || typeof rawHost !== "string") {
+    return "";
+  }
+  return rawHost.replace(/\/+$/, "");
+}
+
+function bookingShareDocRef(db, bookingId) {
+  return db.collection("bookingShares").doc(String(bookingId));
+}
+
+function buildShareLink(token) {
+  const configuredBase = normalizeHost(process.env.SHARE_WEB_BASE_URL || "");
+  if (configuredBase) {
+    return `${configuredBase}${SHARE_LINK_ROUTE_PREFIX}/${token}`;
+  }
+  const projectId = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT;
+  if (projectId) {
+    return `https://${projectId}.web.app${SHARE_LINK_ROUTE_PREFIX}/${token}`;
+  }
+  return `${SHARE_LINK_ROUTE_PREFIX}/${token}`;
+}
+
+function createShareToken() {
+  return crypto.randomBytes(SHARE_TOKEN_BYTES).toString("hex");
+}
+
+function parseBearerToken(authHeader) {
+  if (!authHeader || typeof authHeader !== "string") {
+    return "";
+  }
+  if (!authHeader.toLowerCase().startsWith("bearer ")) {
+    return "";
+  }
+  return authHeader.substring(7).trim();
+}
+
+function resolveShareToken(request) {
+  const fromQuery = request.query && request.query.token ?
+    String(request.query.token).trim() :
+    "";
+  if (fromQuery) {
+    return fromQuery;
+  }
+  const fromBody = request.body && request.body.token ?
+    String(request.body.token).trim() :
+    "";
+  if (fromBody) {
+    return fromBody;
+  }
+  return parseBearerToken(request.headers.authorization);
+}
+
+function setShareApiCors(response) {
+  response.set("Access-Control-Allow-Origin", "*");
+  response.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization",
+  );
+}
+
+function normalizeRole(rawRole) {
+  return String(rawRole || "").trim().toLowerCase();
+}
+
+function assertShareUploadRole(rawRole) {
+  const role = normalizeRole(rawRole);
+  if (!ALLOWED_SHARE_UPLOAD_ROLES.has(role)) {
+    throw new HttpsError(
+        "permission-denied",
+        "Upload is allowed only for provider or editor role.",
+    );
+  }
+  return role;
+}
+
+function folderTypeForRole(role) {
+  return role === "provider" ? "original" : "edited";
+}
+
+function storageFolderForFolderType(folderType) {
+  return folderType === "original" ?
+    BOOKING_DRIVE_ORIGINAL_FOLDER :
+    BOOKING_DRIVE_EDITED_FOLDER;
+}
+
+function toIsoDate(value) {
+  if (!value) return null;
+  if (value.toDate && typeof value.toDate === "function") {
+    return value.toDate().toISOString();
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  try {
+    return new Date(value).toISOString();
+  } catch (_) {
+    return null;
+  }
+}
+
+function sanitizeUploadFileName(rawName) {
+  const fallback = "upload_file";
+  const name = String(rawName || "").trim();
+  if (!name) return fallback;
+  return name.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_");
+}
+
+function ensureMimeAllowed(mimeType) {
+  const mime = String(mimeType || "").trim().toLowerCase();
+  if (!mime || !ALLOWED_MIME_PREFIXES.some((prefix) => mime.startsWith(prefix))) {
+    throw new HttpsError(
+        "invalid-argument",
+        "Only image and video uploads are supported.",
+    );
+  }
+  return mime;
+}
+
+async function getBookingShareContextOrThrow(token) {
+  const cleanedToken = String(token || "").trim();
+  if (!cleanedToken) {
+    throw new HttpsError("invalid-argument", "Missing share token.");
+  }
+  const db = admin.firestore();
+  const shareSnap = await db.collection("bookingShares")
+      .where("token", "==", cleanedToken)
+      .limit(1)
+      .get();
+  if (shareSnap.empty) {
+    throw new HttpsError("not-found", "Share link is invalid.");
+  }
+  const shareDoc = shareSnap.docs[0];
+  const shareData = shareDoc.data() || {};
+  if (shareData.isActive === false) {
+    throw new HttpsError("permission-denied", "Share link is disabled.");
+  }
+  const bookingId = String(shareData.bookingId || "");
+  if (!bookingId) {
+    throw new HttpsError("failed-precondition", "Share link is malformed.");
+  }
+  return {db, shareDoc, shareData, bookingId};
+}
+
+function pickPreviewUrl(file) {
+  if (file.thumbnailUrl && typeof file.thumbnailUrl === "string") {
+    return file.thumbnailUrl;
+  }
+  if (file.downloadUrl && typeof file.downloadUrl === "string") {
+    return file.downloadUrl;
+  }
+  return "";
+}
+
+async function getShareFiles(bookingId, shareData) {
+  const includeOriginal = shareData.includeOriginal !== false;
+  const includeEdited = shareData.includeEdited !== false;
+  const filesSnap = await admin.firestore()
+      .collection("bookings")
+      .doc(bookingId)
+      .collection("driveFiles")
+      .get();
+  const files = filesSnap.docs
+      .map((doc) => {
+        const data = doc.data() || {};
+        return {
+          fileId: doc.id,
+          fileName: String(data.fileName || "file"),
+          mimeType: String(data.mimeType || "application/octet-stream"),
+          sizeBytes: Number(data.sizeBytes || 0),
+          storagePath: String(data.storagePath || ""),
+          downloadUrl: String(data.downloadUrl || ""),
+          previewUrl: pickPreviewUrl(data),
+          folderType: String(data.folderType || ""),
+          uploadedByRole: String(data.uploadedByRole || "unknown"),
+          uploadedById: String(data.uploadedById || ""),
+          uploadedAt: toIsoDate(data.uploadedAt || data.createdAt),
+          isDeleted: data.isDeleted === true,
+        };
+      })
+      .filter((file) => {
+        if (file.isDeleted || !file.storagePath) {
+          return false;
+        }
+        if (file.folderType === "original") {
+          return includeOriginal;
+        }
+        if (file.folderType === "edited") {
+          return includeEdited;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const aTime = a.uploadedAt ? Date.parse(a.uploadedAt) : 0;
+        const bTime = b.uploadedAt ? Date.parse(b.uploadedAt) : 0;
+        if (a.folderType === b.folderType) {
+          return bTime - aTime;
+        }
+        if (a.folderType === "original") return -1;
+        if (b.folderType === "original") return 1;
+        return bTime - aTime;
+      });
+  return files;
+}
 
 /** One active booking per provider per calendar day (eventDateKey). */
 exports.createBookingIfAvailable = onCall(async (request) => {
@@ -127,10 +357,453 @@ exports.onBookingReleaseScheduleSlot = onDocumentUpdated("bookings/{bookingId}",
   return null;
 });
 
+async function createBookingDriveFolderMarkers(bookingId) {
+  const bucket = admin.storage().bucket();
+  const basePath = `bookings/${bookingId}`;
+  const markerPaths = [
+    `${basePath}/${BOOKING_DRIVE_ORIGINAL_FOLDER}/.keep`,
+    `${basePath}/${BOOKING_DRIVE_EDITED_FOLDER}/.keep`,
+  ];
+
+  await Promise.all(markerPaths.map(async (markerPath) => {
+    const file = bucket.file(markerPath);
+    const [exists] = await file.exists();
+    if (!exists) {
+      await file.save("booking-drive-marker", {
+        resumable: false,
+        metadata: {
+          contentType: "text/plain",
+          cacheControl: "no-cache",
+        },
+      });
+    }
+  }));
+}
+
+exports.onBookingProviderAcceptedInitializeDrive = onDocumentUpdated(
+    "bookings/{bookingId}",
+    async (event) => {
+      const before = event.data.before.data() || {};
+      const after = event.data.after.data() || {};
+      const bookingId = String(event.params.bookingId || "");
+      if (!bookingId) return null;
+
+      const hadProviderAccepted = !!before.eventStatus?.providerAccepted;
+      const hasProviderAccepted = !!after.eventStatus?.providerAccepted;
+      const statusChangedToConfirmed = before.status !== "confirmed" && after.status === "confirmed";
+      const shouldInitialize = !hadProviderAccepted && hasProviderAccepted || statusChangedToConfirmed;
+
+      if (!shouldInitialize) {
+        return null;
+      }
+
+      const db = admin.firestore();
+      const rootPath = `bookings/${bookingId}`;
+      const metaRef = db.collection("bookings")
+          .doc(bookingId)
+          .collection("drive")
+          .doc("meta");
+
+      try {
+        await db.runTransaction(async (tx) => {
+          const metaSnap = await tx.get(metaRef);
+          if (!metaSnap.exists) {
+            tx.set(metaRef, {
+              bookingId,
+              rootPath,
+              originalFolderPath: `${rootPath}/${BOOKING_DRIVE_ORIGINAL_FOLDER}`,
+              editedFolderPath: `${rootPath}/${BOOKING_DRIVE_EDITED_FOLDER}`,
+              isSharedWithCustomer: false,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            return;
+          }
+          tx.set(metaRef, {
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          }, {merge: true});
+        });
+
+        await createBookingDriveFolderMarkers(bookingId);
+      } catch (error) {
+        logger.error("Failed to initialize booking drive folders", {
+          bookingId,
+          error: String(error && error.message ? error.message : error),
+        });
+      }
+
+      return null;
+    },
+);
+
+exports.createOrGetBookingShareLink = onCall(async (request) => {
+  if (!request.auth || !request.auth.uid) {
+    throw new HttpsError("unauthenticated", "Sign in required.");
+  }
+  const bookingId = String(request.data && request.data.bookingId || "").trim();
+  if (!bookingId) {
+    throw new HttpsError("invalid-argument", "bookingId is required.");
+  }
+
+  const db = admin.firestore();
+  const bookingRef = db.collection("bookings").doc(bookingId);
+  const bookingSnap = await bookingRef.get();
+  if (!bookingSnap.exists) {
+    throw new HttpsError("not-found", "Booking not found.");
+  }
+  const bookingData = bookingSnap.data() || {};
+
+  const callerUid = request.auth.uid;
+  const callerSnap = await db.collection("users").doc(callerUid).get();
+  const callerType = String(callerSnap.data() && callerSnap.data().userType || "");
+  const isAdmin = callerType === "admin" || callerType === "superadmin";
+  const isBookingProvider = String(bookingData.providerId || "") === callerUid;
+  if (!isAdmin && !isBookingProvider) {
+    throw new HttpsError(
+        "permission-denied",
+        "Only admin or assigned provider can create share links.",
+    );
+  }
+
+  const filesSnap = await bookingRef.collection("driveFiles").limit(1).get();
+  if (filesSnap.empty) {
+    throw new HttpsError("failed-precondition", "No booking files available to share.");
+  }
+
+  const shareRef = bookingShareDocRef(db, bookingId);
+  let token = "";
+  await db.runTransaction(async (tx) => {
+    const shareSnap = await tx.get(shareRef);
+    if (shareSnap.exists) {
+      const existing = shareSnap.data() || {};
+      token = String(existing.token || "");
+      if (token) {
+        tx.set(shareRef, {
+          isActive: true,
+          includeOriginal: true,
+          includeEdited: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastGeneratedBy: callerUid,
+        }, {merge: true});
+        return;
+      }
+    }
+
+    token = createShareToken();
+    tx.set(shareRef, {
+      bookingId,
+      token,
+      isActive: true,
+      includeOriginal: true,
+      includeEdited: true,
+      createdBy: callerUid,
+      lastGeneratedBy: callerUid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      lastAccessedAt: null,
+      downloadCount: 0,
+      version: 1,
+    }, {merge: true});
+  });
+
+  if (!token) {
+    throw new HttpsError("internal", "Could not generate share token.");
+  }
+  return {
+    bookingId,
+    token,
+    url: buildShareLink(token),
+  };
+});
+
+exports.getBookingShareManifest = onRequest(async (request, response) => {
+  setShareApiCors(response);
+  if (request.method === "OPTIONS") {
+    response.status(204).send("");
+    return;
+  }
+  if (request.method !== "GET") {
+    response.status(405).json({error: "Method not allowed"});
+    return;
+  }
+
+  try {
+    const token = resolveShareToken(request);
+    const {shareDoc, shareData, bookingId} = await getBookingShareContextOrThrow(token);
+    const files = await getShareFiles(bookingId, shareData);
+
+    await shareDoc.ref.set({
+      lastAccessedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+
+    response.status(200).json({
+      bookingId,
+      token,
+      canDownloadZip: true,
+      roles: ["provider", "editor", "user"],
+      uploadRoles: ["provider", "editor"],
+      files,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    logger.error("getBookingShareManifest failed", error);
+    const code = error instanceof HttpsError ? error.code : "internal";
+    const status = code === "not-found" ? 404 :
+      code === "permission-denied" ? 403 :
+      code === "invalid-argument" ? 400 : 500;
+    response.status(status).json({
+      error: "Unable to fetch share manifest",
+      code,
+      message: error.message || "Unknown error",
+    });
+  }
+});
+
+exports.createBookingShareUploadTarget = onRequest(async (request, response) => {
+  setShareApiCors(response);
+  if (request.method === "OPTIONS") {
+    response.status(204).send("");
+    return;
+  }
+  if (request.method !== "POST") {
+    response.status(405).json({error: "Method not allowed"});
+    return;
+  }
+
+  try {
+    const token = resolveShareToken(request);
+    const {bookingId} = await getBookingShareContextOrThrow(token);
+    const role = assertShareUploadRole(request.body && request.body.role);
+    const folderType = folderTypeForRole(role);
+    const folderPath = storageFolderForFolderType(folderType);
+    const mimeType = ensureMimeAllowed(request.body && request.body.mimeType);
+    const fileName = sanitizeUploadFileName(request.body && request.body.fileName);
+    const sizeBytes = Number(request.body && request.body.sizeBytes || 0);
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0 || sizeBytes > MAX_SHARE_UPLOAD_BYTES) {
+      throw new HttpsError(
+          "invalid-argument",
+          `File size must be between 1 byte and ${MAX_SHARE_UPLOAD_BYTES} bytes.`,
+      );
+    }
+
+    const objectName = `${Date.now()}_${crypto.randomBytes(4).toString("hex")}_${fileName}`;
+    const storagePath = `bookings/${bookingId}/${folderPath}/${objectName}`;
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(storagePath);
+    const signedUrlParts = await file.getSignedUrl({
+      version: "v4",
+      action: "write",
+      expires: Date.now() + 15 * 60 * 1000,
+      contentType: mimeType,
+    });
+    response.status(200).json({
+      bookingId,
+      token,
+      role,
+      folderType,
+      storagePath,
+      uploadUrl: signedUrlParts[0],
+      requiredHeaders: {
+        "Content-Type": mimeType,
+      },
+      expiresInSeconds: 900,
+    });
+  } catch (error) {
+    logger.error("createBookingShareUploadTarget failed", error);
+    const code = error instanceof HttpsError ? error.code : "internal";
+    const status = code === "not-found" ? 404 :
+      code === "permission-denied" ? 403 :
+      code === "invalid-argument" ? 400 : 500;
+    response.status(status).json({
+      error: "Unable to create upload target",
+      code,
+      message: error.message || "Unknown error",
+    });
+  }
+});
+
+exports.finalizeBookingShareUpload = onRequest(async (request, response) => {
+  setShareApiCors(response);
+  if (request.method === "OPTIONS") {
+    response.status(204).send("");
+    return;
+  }
+  if (request.method !== "POST") {
+    response.status(405).json({error: "Method not allowed"});
+    return;
+  }
+
+  try {
+    const token = resolveShareToken(request);
+    const {bookingId} = await getBookingShareContextOrThrow(token);
+    const role = assertShareUploadRole(request.body && request.body.role);
+    const expectedFolderType = folderTypeForRole(role);
+    const storagePath = String(request.body && request.body.storagePath || "").trim();
+    if (!storagePath) {
+      throw new HttpsError("invalid-argument", "storagePath is required.");
+    }
+    const expectedSegment = storageFolderForFolderType(expectedFolderType);
+    if (!storagePath.startsWith(`bookings/${bookingId}/${expectedSegment}/`)) {
+      throw new HttpsError(
+          "permission-denied",
+          "Role is not allowed to finalize file in this folder.",
+      );
+    }
+
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(storagePath);
+    const [exists] = await file.exists();
+    if (!exists) {
+      throw new HttpsError("not-found", "Uploaded file was not found in storage.");
+    }
+
+    const metadataResult = await file.getMetadata();
+    const metadata = metadataResult[0] || {};
+    const sizeBytes = Number(metadata.size || request.body && request.body.sizeBytes || 0);
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0 || sizeBytes > MAX_SHARE_UPLOAD_BYTES) {
+      throw new HttpsError("invalid-argument", "Invalid uploaded file size.");
+    }
+    const mimeType = ensureMimeAllowed(
+        metadata.contentType || request.body && request.body.mimeType || "",
+    );
+    const originalName = String(
+        request.body && request.body.fileName || metadata.metadata &&
+        metadata.metadata.originalFileName || file.name.split("/").pop() || "upload_file",
+    );
+    const fileName = sanitizeUploadFileName(originalName);
+    const uploaderId = String(request.body && request.body.uploaderId || "").trim();
+
+    const signedReadUrlParts = await file.getSignedUrl({
+      version: "v4",
+      action: "read",
+      expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    });
+    const downloadUrl = signedReadUrlParts[0];
+
+    const fileDocRef = admin.firestore()
+        .collection("bookings")
+        .doc(bookingId)
+        .collection("driveFiles")
+        .doc();
+    const now = admin.firestore.Timestamp.now();
+    await fileDocRef.set({
+      bookingId,
+      folderType: expectedFolderType,
+      storagePath,
+      downloadUrl,
+      thumbnailUrl: "",
+      fileName,
+      mimeType,
+      sizeBytes,
+      uploadedByRole: role,
+      uploadedById: uploaderId,
+      uploadedAt: now,
+      isDeleted: false,
+      createdAt: now,
+      updatedAt: now,
+    }, {merge: true});
+
+    response.status(200).json({
+      success: true,
+      bookingId,
+      fileId: fileDocRef.id,
+      folderType: expectedFolderType,
+      uploadedAt: now.toDate().toISOString(),
+      uploadedByRole: role,
+      uploadedById: uploaderId,
+      downloadUrl,
+    });
+  } catch (error) {
+    logger.error("finalizeBookingShareUpload failed", error);
+    const code = error instanceof HttpsError ? error.code : "internal";
+    const status = code === "not-found" ? 404 :
+      code === "permission-denied" ? 403 :
+      code === "invalid-argument" ? 400 : 500;
+    response.status(status).json({
+      error: "Unable to finalize upload",
+      code,
+      message: error.message || "Unknown error",
+    });
+  }
+});
+
+exports.downloadBookingShareZip = onRequest(async (request, response) => {
+  setShareApiCors(response);
+  if (request.method === "OPTIONS") {
+    response.status(204).send("");
+    return;
+  }
+  if (request.method !== "GET") {
+    response.status(405).json({error: "Method not allowed"});
+    return;
+  }
+
+  try {
+    const token = resolveShareToken(request);
+    const {shareDoc, shareData, bookingId} = await getBookingShareContextOrThrow(token);
+    const files = await getShareFiles(bookingId, shareData);
+    if (!files.length) {
+      response.status(404).json({error: "No files found for this share link"});
+      return;
+    }
+
+    await shareDoc.ref.set({
+      lastAccessedAt: admin.firestore.FieldValue.serverTimestamp(),
+      downloadCount: admin.firestore.FieldValue.increment(1),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, {merge: true});
+
+    response.setHeader("Content-Type", "application/zip");
+    response.setHeader(
+        "Content-Disposition",
+        `attachment; filename="booking_${bookingId}_media.zip"`,
+    );
+    response.setHeader("Cache-Control", "private, max-age=0, no-store");
+
+    const archive = archiver("zip", {zlib: {level: 9}});
+    archive.pipe(response);
+
+    const bucket = admin.storage().bucket();
+    for (const file of files) {
+      const storageFile = bucket.file(file.storagePath);
+      const [exists] = await storageFile.exists();
+      if (!exists) {
+        continue;
+      }
+      const safeFileName = file.fileName.replace(/[\\/:*?"<>|]/g, "_");
+      const zipPath = `${file.folderType || "files"}/${safeFileName}`;
+      archive.append(storageFile.createReadStream(), {name: zipPath});
+    }
+    await new Promise((resolve, reject) => {
+      archive.on("error", reject);
+      archive.on("end", resolve);
+      archive.finalize().catch(reject);
+    });
+  } catch (error) {
+    logger.error("downloadBookingShareZip failed", error);
+    if (!response.headersSent) {
+      const code = error instanceof HttpsError ? error.code : "internal";
+      const status = code === "not-found" ? 404 :
+        code === "permission-denied" ? 403 :
+        code === "invalid-argument" ? 400 : 500;
+      response.status(status).json({
+        error: "Unable to download zip",
+        code,
+        message: error.message || "Unknown error",
+      });
+    }
+  }
+});
+
 const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
 const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
 const smtpUser = defineSecret("SMTP_USER");
 const smtpPass = defineSecret("SMTP_PASS");
+const veriffApiKey = defineSecret("VERIFF_API_KEY");
+const veriffApiSecret = defineSecret("VERIFF_API_SECRET");
+const veriffWebhookClientId = defineSecret("VERIFF_WEBHOOK_CLIENT_ID");
+const veriffWebhookSharedSecret = defineSecret("VERIFF_WEBHOOK_SHARED_SECRET");
 const STRIPE_TEST_CHARGE_GBP = 2.0;
 const STRIPE_TEST_CHARGE_FLAG = String(
     process.env.STRIPE_TEST_CHARGE_ENABLED || "",
@@ -151,9 +824,234 @@ function resolveWebhookSecret() {
   return stripeWebhookSecret.value();
 }
 
+function resolveVeriffApiKey() {
+  return process.env.VERIFF_API_KEY || veriffApiKey.value();
+}
+
+function resolveVeriffApiSecret() {
+  return process.env.VERIFF_API_SECRET || veriffApiSecret.value();
+}
+
+function resolveVeriffWebhookClientId() {
+  return process.env.VERIFF_WEBHOOK_CLIENT_ID || veriffWebhookClientId.value();
+}
+
+function resolveVeriffWebhookSharedSecret() {
+  return process.env.VERIFF_WEBHOOK_SHARED_SECRET || veriffWebhookSharedSecret.value();
+}
+
+function signWithHmacSha256(payload, secret) {
+  return crypto.createHmac("sha256", secret).update(payload).digest("hex");
+}
+
+function timingSafeHexEqual(a, b) {
+  const left = Buffer.from(String(a || ""), "utf8");
+  const right = Buffer.from(String(b || ""), "utf8");
+  if (left.length !== right.length || left.length === 0) {
+    return false;
+  }
+  return crypto.timingSafeEqual(left, right);
+}
+
+function mapVeriffStatus(rawStatus) {
+  const status = String(rawStatus || "").toLowerCase();
+  if (status === "approved") return {veriffStatus: "approved", providerStatus: "approved"};
+  if (status === "declined") return {veriffStatus: "declined", providerStatus: "rejected"};
+  if (status === "resubmission_requested") {
+    return {veriffStatus: "resubmission_requested", providerStatus: "pending"};
+  }
+  if (status === "expired") return {veriffStatus: "expired", providerStatus: "pending"};
+  if (status === "abandoned") return {veriffStatus: "abandoned", providerStatus: "pending"};
+  return {veriffStatus: status || "error", providerStatus: "pending"};
+}
+
+exports.createVeriffSession = onCall(
+    {
+      region: "us-central1",
+      secrets: [veriffApiKey, veriffApiSecret],
+    },
+    async (request) => {
+      if (!request.auth || !request.auth.uid) {
+        throw new HttpsError("unauthenticated", "Sign in required.");
+      }
+      const providerId = request.auth.uid;
+      const db = admin.firestore();
+      const providerRef = db.collection("providers").doc(providerId);
+      const providerSnap = await providerRef.get();
+      if (!providerSnap.exists) {
+        throw new HttpsError("failed-precondition", "Provider profile not found.");
+      }
+
+      const apiKey = resolveVeriffApiKey();
+      const apiSecret = resolveVeriffApiSecret();
+      if (!apiKey || !apiSecret) {
+        throw new HttpsError("failed-precondition", "Veriff keys are not configured.");
+      }
+
+      const provider = providerSnap.data() || {};
+      const person = {};
+      if (provider.ownerName) {
+        const parts = String(provider.ownerName).trim().split(/\s+/);
+        if (parts.length > 0) {
+          person.firstName = parts[0];
+          person.lastName = parts.length > 1 ? parts.slice(1).join(" ") : parts[0];
+        }
+      }
+
+      const callbackUrl = process.env.VERIFF_DECISION_WEBHOOK_URL ||
+        `https://us-central1-${process.env.GCLOUD_PROJECT}.cloudfunctions.net/veriffDecisionWebhook`;
+      const payload = {
+        verification: {
+          callback: callbackUrl,
+          vendorData: providerId,
+          timestamp: new Date().toISOString(),
+          person,
+        },
+      };
+
+      const payloadText = JSON.stringify(payload);
+      const signature = signWithHmacSha256(payloadText, apiSecret);
+      const veriffResponse = await fetch("https://stationapi.veriff.com/v1/sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-AUTH-CLIENT": apiKey,
+          "X-HMAC-SIGNATURE": signature,
+        },
+        body: payloadText,
+      });
+
+      if (!veriffResponse.ok) {
+        const bodyText = await veriffResponse.text();
+        logger.error("createVeriffSession failed", {
+          status: veriffResponse.status,
+          body: bodyText,
+        });
+        throw new HttpsError("internal", "Unable to create Veriff session.");
+      }
+
+      const body = await veriffResponse.json();
+      const verification = body.verification || {};
+      const sessionUrl = String(verification.url || "");
+      const sessionId = String(verification.id || "");
+      if (!sessionUrl) {
+        throw new HttpsError("internal", "Veriff did not return a session URL.");
+      }
+
+      await providerRef.set({
+        metadata: {
+          veriff: {
+            status: "session_created",
+            sessionId,
+            sessionUrlCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            vendorData: providerId,
+            audit: {
+              updatedBy: "provider_app",
+            },
+          },
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+
+      return {sessionUrl};
+    },
+);
+
+exports.veriffDecisionWebhook = onRequest(
+    {
+      region: "us-central1",
+      secrets: [veriffWebhookClientId, veriffWebhookSharedSecret],
+    },
+    async (request, response) => {
+      if (request.method !== "POST") {
+        response.status(405).send("Method not allowed");
+        return;
+      }
+
+      const expectedClientId = resolveVeriffWebhookClientId();
+      const sharedSecret = resolveVeriffWebhookSharedSecret();
+      if (!expectedClientId || !sharedSecret) {
+        logger.error("Veriff webhook secret/client id not configured");
+        response.status(500).send("Webhook not configured");
+        return;
+      }
+
+      const authClient = String(request.headers["x-auth-client"] || "");
+      const incomingSignature = String(request.headers["x-hmac-signature"] || "");
+      if (!authClient || !incomingSignature || authClient !== expectedClientId) {
+        response.status(401).send("Invalid webhook headers");
+        return;
+      }
+
+      const rawBody = request.rawBody ? request.rawBody.toString("utf8") : JSON.stringify(request.body || {});
+      const expectedSignature = signWithHmacSha256(rawBody, sharedSecret);
+      if (!timingSafeHexEqual(incomingSignature, expectedSignature)) {
+        response.status(401).send("Invalid signature");
+        return;
+      }
+
+      const payload = request.body || {};
+      const verification = payload.verification || {};
+      const sessionId = String(verification.id || "");
+      const vendorData = String(verification.vendorData || "");
+      const decisionStatus = String(verification.status || "").toLowerCase();
+      if (!sessionId || !vendorData) {
+        response.status(400).send("Missing session ID or vendor data");
+        return;
+      }
+
+      const db = admin.firestore();
+      const dedupeRef = db.collection("veriffWebhookEvents")
+          .doc(`${sessionId}_${decisionStatus || "unknown"}`);
+      const alreadyProcessed = await db.runTransaction(async (tx) => {
+        const doc = await tx.get(dedupeRef);
+        if (doc.exists) return true;
+        tx.set(dedupeRef, {
+          sessionId,
+          decisionStatus,
+          providerId: vendorData,
+          processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return false;
+      });
+
+      if (alreadyProcessed) {
+        response.status(200).send("ok");
+        return;
+      }
+
+      const mapped = mapVeriffStatus(decisionStatus);
+      const providerRef = db.collection("providers").doc(vendorData);
+      await providerRef.set({
+        verificationStatus: mapped.providerStatus,
+        isVerified: mapped.providerStatus === "approved",
+        metadata: {
+          veriff: {
+            status: mapped.veriffStatus,
+            sessionId,
+            vendorData,
+            decisionCode: String(verification.code || ""),
+            decidedAt: admin.firestore.FieldValue.serverTimestamp(),
+            document: {
+              type: String(verification.document && verification.document.type || ""),
+              country: String(verification.document && verification.document.country || ""),
+            },
+            rawStatus: decisionStatus,
+            audit: {
+              updatedBy: "system_webhook",
+            },
+          },
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+
+      response.status(200).send("ok");
+    },
+);
+
 function stripeClient() {
   const key = resolveStripeApiKey();
-  return key ? new Stripe(key) : null;
+  return key ? new (getStripeCtor())(key) : null;
 }
 
 function setCorsHeaders(response) {
@@ -713,7 +1611,7 @@ exports.stripeWebhook = onRequest(
                 }
               }
               const smtpFrom = process.env.SMTP_FROM || smtpUserVal || "";
-              await invoiceEmail.maybeSendInvoiceEmail({
+              await getInvoiceEmailModule().maybeSendInvoiceEmail({
                 db: admin.firestore(),
                 bookingRef,
                 bookingId,

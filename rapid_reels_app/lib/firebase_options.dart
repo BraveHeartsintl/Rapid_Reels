@@ -16,10 +16,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'iOS Firebase configuration has been removed. '
-          'Please configure Firebase for iOS if needed.',
-        );
+        return ios;
       case TargetPlatform.macOS:
         return macos;
       case TargetPlatform.windows:
@@ -33,12 +30,13 @@ class DefaultFirebaseOptions {
 
   // Web configuration (from your new Firebase project)
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAAuzYnTH6DhyFewO57ITLXa2CJB7B1IX4',
-    appId: '1:583858856130:web:YOUR_WEB_APP_ID', // Update when web app is added
+    apiKey: 'AIzaSyCWx_eHXp8YQanxbU0oz1BUZeCLiWzd7Vs',
+    appId: '1:583858856130:web:c3a3b4addc2a797e1e5b5b',
     messagingSenderId: '583858856130',
     projectId: 'rapidreelnew-de86a',
     authDomain: 'rapidreelnew-de86a.firebaseapp.com',
     storageBucket: 'rapidreelnew-de86a.firebasestorage.app',
+    measurementId: 'G-BKPJHC4F2E',
   );
 
   // Android configuration (from google-services.json - NEW PROJECT rapidreelnew-de86a)
@@ -50,7 +48,17 @@ class DefaultFirebaseOptions {
     storageBucket: 'rapidreelnew-de86a.firebasestorage.app',
   );
 
-  // iOS configuration removed - Firebase is not connected for iOS
+  // iOS configuration — fill in values from your GoogleService-Info.plist
+  // after registering the iOS app in Firebase Console (project: rapidreelnew-de86a)
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'REPLACE_WITH_API_KEY',             // API_KEY from GoogleService-Info.plist
+    appId: 'REPLACE_WITH_APP_ID',               // GOOGLE_APP_ID from GoogleService-Info.plist
+    messagingSenderId: '583858856130',
+    projectId: 'rapidreelnew-de86a',
+    storageBucket: 'rapidreelnew-de86a.firebasestorage.app',
+    iosClientId: 'REPLACE_WITH_CLIENT_ID',      // CLIENT_ID from GoogleService-Info.plist
+    iosBundleId: 'REPLACE_WITH_BUNDLE_ID',      // BUNDLE_ID from GoogleService-Info.plist
+  );
 
   // For now, desktop platforms reuse the web config.
   static const FirebaseOptions macos = web;

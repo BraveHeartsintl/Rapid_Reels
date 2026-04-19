@@ -20,6 +20,26 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType in ['admin', 'superadmin'];
     }
 
+    function bookingDoc(bookingId) {
+      return get(/databases/$(database)/documents/bookings/$(bookingId)).data;
+    }
+
+    function isBookingProvider(bookingId) {
+      return isAuthenticated() && bookingDoc(bookingId).providerId == request.auth.uid;
+    }
+
+    function isBookingCustomer(bookingId) {
+      return isAuthenticated() && bookingDoc(bookingId).customerId == request.auth.uid;
+    }
+
+    function bookingDriveMeta(bookingId) {
+      return get(/databases/$(database)/documents/bookings/$(bookingId)/drive/meta).data;
+    }
+
+    function isBookingDriveSharedWithCustomer(bookingId) {
+      return bookingDriveMeta(bookingId).isSharedWithCustomer == true;
+    }
+
     // Provider booking updates may change status, metadata, eventStatus, timestamps — not identity, payment, or core event fields.
     function providerBookingImmutableFieldsMatch() {
       let b = resource.data;
@@ -81,8 +101,18 @@ service cloud.firestore {
       // Anyone can read active, verified providers
       allow read: if resource.data.isActive == true;
       
-      // Provider can read/write their own data
-      allow read, write: if isOwner(providerId);
+      // Provider can read their own data
+      allow read: if isOwner(providerId);
+
+      // Provider can create own doc only in pending/unverified state.
+      allow create: if isOwner(providerId) &&
+                     request.resource.data.verificationStatus == 'pending' &&
+                     request.resource.data.isVerified == false;
+
+      // Provider can update profile fields but cannot self-elevate verification state.
+      allow update: if isOwner(providerId) &&
+                     request.resource.data.verificationStatus == resource.data.verificationStatus &&
+                     request.resource.data.isVerified == resource.data.isVerified;
       
       // Admin can read/write any provider
       allow read, write: if isAdmin();
@@ -118,6 +148,42 @@ service cloud.firestore {
       
       // Admin can read/write any booking
       allow read, write: if isAdmin();
+
+      match /drive/{docId} {
+        allow read: if isBookingProvider(bookingId) || isAdmin() ||
+          (isBookingCustomer(bookingId) && isBookingDriveSharedWithCustomer(bookingId));
+
+        // Providers can initialize merge updates, but cannot share with customer.
+        allow create, update: if isBookingProvider(bookingId) &&
+          (
+            !('isSharedWithCustomer' in request.resource.data) ||
+            request.resource.data.isSharedWithCustomer == false
+          );
+
+        // Admin controls the sharing lifecycle.
+        allow create, update, delete: if isAdmin();
+      }
+
+      match /driveFiles/{fileId} {
+        allow read: if isBookingProvider(bookingId) || isAdmin() ||
+          (isBookingCustomer(bookingId) && isBookingDriveSharedWithCustomer(bookingId));
+
+        allow create, update: if isBookingProvider(bookingId) &&
+          request.resource.data.folderType == 'original' &&
+          request.resource.data.uploadedByRole == 'provider' &&
+          request.resource.data.uploadedById == request.auth.uid;
+
+        allow create, update: if isAdmin() &&
+          request.resource.data.folderType in ['original', 'edited'];
+
+        allow delete: if isAdmin();
+      }
+    }
+
+    // Tokenized share links managed by admin/cloud functions.
+    match /bookingShares/{bookingId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
     
     // ==================== REELS COLLECTION ====================

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="View and download shared booking media from Rapid Reels."
+    />
+    <meta property="og:title" content="Rapid Reels Shared Booking Media" />
+    <meta
+      property="og:description"
+      content="Preview and download event photos and videos shared by Rapid Reels."
+    />
+    <meta name="theme-color" content="#141A1D" />
+    <title>Rapid Reels | Shared Booking Media</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="hero card-surface">
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">RR</div>
+          <div>
+            <p class="brand-name">Rapid Reels</p>
+            <p class="brand-tagline">Instant reels for your special moments</p>
+          </div>
+        </div>
+        <h1 class="hero-title">Shared Booking Media</h1>
+        <p id="subtitle" class="hero-subtitle" aria-live="polite">
+          Preparing your media preview...
+        </p>
+        <p class="trust-note">
+          Anyone with this link can view and download these files.
+        </p>
+      </header>
+
+      <section id="actions" class="actions hidden">
+        <button id="downloadAllBtn" class="primary-btn">
+          Download all as ZIP
+        </button>
+      </section>
+
+      <section id="roleGate" class="card-surface gate">
+        <h2 class="section-title">Access role</h2>
+        <p class="section-subtitle">
+          Select how you are accessing this link. Provider/Editor can upload files.
+        </p>
+        <div class="gate-role-grid">
+          <button class="secondary-btn role-choice-btn" data-role-choice="provider">
+            Provider
+          </button>
+          <button class="secondary-btn role-choice-btn" data-role-choice="editor">
+            Editor
+          </button>
+          <button class="secondary-btn role-choice-btn" data-role-choice="user">
+            User
+          </button>
+        </div>
+        <label class="input-label" for="displayNameInput">Display name (optional)</label>
+        <input
+          id="displayNameInput"
+          class="text-input"
+          type="text"
+          maxlength="60"
+          placeholder="Your name or identifier"
+        />
+        <button id="continueBtn" class="primary-btn">Continue</button>
+      </section>
+
+      <section id="uploadPanel" class="card-surface upload-panel hidden">
+        <div class="upload-heading-row">
+          <h2 class="section-title">Upload media</h2>
+          <p id="uploadRoleHint" class="upload-role-hint"></p>
+        </div>
+        <p class="section-subtitle">
+          Upload images/videos. Files are automatically stored in your allowed folder.
+        </p>
+        <input
+          id="uploadInput"
+          class="file-input"
+          type="file"
+          accept="image/*,video/*"
+          multiple
+        />
+        <button id="uploadBtn" class="primary-btn">Upload selected files</button>
+        <p id="uploadStatus" class="upload-status" aria-live="polite"></p>
+      </section>
+
+      <section id="loadingState" class="state card-surface hidden">
+        <div class="loader"></div>
+        <p>Loading shared files...</p>
+      </section>
+
+      <section id="emptyState" class="state card-surface hidden">
+        <p class="state-title">No files yet</p>
+        <p>This booking does not have shareable files at the moment.</p>
+      </section>
+
+      <section id="errorCard" class="state card-surface error hidden">
+        <p id="errorText" class="state-title">Unable to load media</p>
+        <p id="errorDetail"></p>
+        <button id="retryBtn" class="secondary-btn" type="button">Retry</button>
+      </section>
+
+      <section id="gallerySections" class="gallery-sections hidden" aria-live="polite">
+        <div class="card-surface media-section">
+          <h3 class="section-title">Original files</h3>
+          <div id="originalGallery" class="gallery"></div>
+        </div>
+        <div class="card-surface media-section">
+          <h3 class="section-title">Edited files</h3>
+          <div id="editedGallery" class="gallery"></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

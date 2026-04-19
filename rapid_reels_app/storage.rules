@@ -10,6 +10,31 @@ service firebase.storage {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function bookingDoc(bookingId) {
+      return firestore.get(/databases/(default)/documents/bookings/$(bookingId)).data;
+    }
+
+    function bookingDriveMeta(bookingId) {
+      return firestore.get(/databases/(default)/documents/bookings/$(bookingId)/drive/meta).data;
+    }
+
+    function isBookingProvider(bookingId) {
+      return isAuthenticated() && bookingDoc(bookingId).providerId == request.auth.uid;
+    }
+
+    function isBookingCustomer(bookingId) {
+      return isAuthenticated() && bookingDoc(bookingId).customerId == request.auth.uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.userType in ['admin', 'superadmin'];
+    }
+
+    function bookingSharedWithCustomer(bookingId) {
+      return bookingDriveMeta(bookingId).isSharedWithCustomer == true;
+    }
+
     // User profile pictures (path must match EditProfileScreen: user_profile_pics/{uid}/{file})
     // Public read so avatar URLs work in NetworkImage/CachedNetworkImage for any viewer.
     // Write only for the signed-in user whose uid matches the folder name.
@@ -19,8 +44,26 @@ service firebase.storage {
     }
 
     // Provider uploads (portfolio, documents, reels)
+    match /providers/{providerId}/documents/{allPaths=**} {
+      allow read: if isOwner(providerId);
+      allow write: if false;
+    }
+
     match /providers/{providerId}/{allPaths=**} {
       allow read, write: if isOwner(providerId);
+    }
+
+    // Booking drive (provider/admin upload + shared customer reads)
+    match /bookings/{bookingId}/original_photos_videos/{allPaths=**} {
+      allow read: if isBookingProvider(bookingId) || isAdmin() ||
+        (isBookingCustomer(bookingId) && bookingSharedWithCustomer(bookingId));
+      allow write: if isBookingProvider(bookingId);
+    }
+
+    match /bookings/{bookingId}/edited_deliverables/{allPaths=**} {
+      allow read: if isBookingProvider(bookingId) || isAdmin() ||
+        (isBookingCustomer(bookingId) && bookingSharedWithCustomer(bookingId));
+      allow write: if isAdmin();
     }
 
     // Admin banner uploads (stored per uploader UID)

@@ -377,16 +377,36 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
               ),
               
               // Action Buttons
-              if (booking.status == 'confirmed' || booking.status == 'ongoing')
+              if (booking.status == 'confirmed' || booking.status == 'ongoing' || booking.status == 'completed')
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: CustomButton(
-                    text: 'View Details',
-                    onPressed: () {
-                      context.push('${AppRoutes.eventDetails2}/${booking.bookingId}');
-                    },
-                    borderRadius: 16,
-                    height: 54,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: CustomButton(
+                          text: 'View Details',
+                          onPressed: () {
+                            context.push('${AppRoutes.eventDetails2}/${booking.bookingId}');
+                          },
+                          borderRadius: 16,
+                          height: 54,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            final userId = ref.read(currentUserProvider)?.uid ?? '';
+                            context.push(
+                              '${AppRoutes.bookingDrive}/${booking.bookingId}',
+                              extra: {'actorId': userId},
+                            );
+                          },
+                          icon: const Icon(Icons.folder_open),
+                          label: const Text('Booking Drive'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
             ],
@@ -414,31 +434,38 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
   Widget _buildStatusBadge(String status) {
     Color color;
     IconData icon;
+    String label;
     
     switch (status) {
       case 'pending':
         color = AppColors.warning;
         icon = Icons.pending;
+        label = 'Pending';
         break;
       case 'confirmed':
         color = AppColors.success;
         icon = Icons.check_circle;
+        label = 'Provider Accepted';
         break;
       case 'ongoing':
         color = AppColors.info;
         icon = Icons.play_circle;
+        label = 'Arrived';
         break;
       case 'completed':
         color = AppColors.success;
         icon = Icons.done_all;
+        label = 'Done';
         break;
       case 'cancelled':
         color = AppColors.error;
         icon = Icons.cancel;
+        label = 'Cancelled';
         break;
       default:
         color = AppColors.textSecondary;
         icon = Icons.help;
+        label = status;
     }
     
     return FittedBox(
@@ -456,7 +483,7 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 4),
           Text(
-            status.toUpperCase(),
+            label.toUpperCase(),
             style: AppTypography.bodySmall.copyWith(
               color: color,
               fontWeight: FontWeight.bold,

@@ -82,6 +82,7 @@ class AppRoutes {
   static const String providerPreEventChecklist =
       '/provider-pre-event-checklist';
   static const String providerBookingStatus = '/provider-booking-status';
+  static const String providerBookingDrive = '/provider-booking-drive';
 
   // Provider Authentication Routes
   static const String providerLogin = '/provider-login';
@@ -109,4 +110,8 @@ class AppRoutes {
   static const String adminProviderEarnings = '/admin-provider-earnings';
   static const String adminOffersManagement = '/admin-offers-management';
   static const String adminReviewsModeration = '/admin-reviews-moderation';
+  static const String adminBookingDrive = '/admin-booking-drive';
+
+  // Shared booking drive routes
+  static const String bookingDrive = '/booking-drive';
 }

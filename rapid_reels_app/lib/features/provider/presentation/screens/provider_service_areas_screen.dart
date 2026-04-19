@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/provider_app_colors.dart';
@@ -249,7 +250,16 @@ class _ProviderServiceAreasScreenState extends State<ProviderServiceAreasScreen>
       return;
     }
 
-    context.push(AppRoutes.providerDocumentUpload);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Session expired. Please sign in again.')),
+      );
+      context.go(AppRoutes.providerLogin);
+      return;
+    }
+
+    context.go('${AppRoutes.providerPortal}/$uid/home');
   }
 
   Set<Marker> _buildCityMarkers() {

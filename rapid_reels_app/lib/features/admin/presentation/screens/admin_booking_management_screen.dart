@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_routes.dart';
 import '../../../../core/firebase/models/firebase_booking_model.dart';
 import '../../../../core/firebase/models/firebase_payment_transaction_model.dart';
 import '../../../../core/firebase/services/firestore_service.dart';
@@ -192,6 +194,16 @@ class _AdminBookingManagementScreenState extends State<AdminBookingManagementScr
                     _showBookingPaymentDetails(booking);
                   },
                   child: const Text('View Details'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    context.push('${AppRoutes.adminBookingDrive}/${booking.bookingId}');
+                  },
+                  icon: const Icon(Icons.folder_open, size: 18),
+                  label: const Text('Drive'),
                 ),
               ),
               const SizedBox(width: 12),

@@ -32,6 +32,7 @@ import '../../features/booking/presentation/screens/payment_screen.dart';
 import '../../features/booking/presentation/screens/payment_success_screen.dart';
 import '../../features/booking/presentation/screens/payment_failure_screen.dart';
 import '../../features/booking/presentation/screens/my_transactions_screen.dart';
+import '../../features/booking/presentation/screens/booking_drive_screen.dart';
 
 // My Events screens
 import '../../features/my_events/presentation/screens/dynamic_my_events_screen.dart';
@@ -532,6 +533,24 @@ class AppRouter {
           );
         },
       ),
+      GoRoute(
+        path: '${AppRoutes.bookingDrive}/:bookingId',
+        name: 'bookingDrive',
+        pageBuilder: (context, state) {
+          final bookingId = state.pathParameters['bookingId'] ?? '';
+          final extra = _extraMap(state.extra);
+          final actorId = extra['actorId'] as String? ?? '';
+          return _buildPageWithSlideTransition(
+            context,
+            state,
+            BookingDriveScreen(
+              bookingId: bookingId,
+              actorId: actorId,
+              role: BookingDriveScreenRole.customer,
+            ),
+          );
+        },
+      ),
 
       // ==================== Reels Routes ====================
       GoRoute(
@@ -1007,6 +1026,25 @@ class AppRouter {
           );
         },
       ),
+      GoRoute(
+        path: '${AppRoutes.providerBookingDrive}/:providerId/:bookingId',
+        name: 'providerBookingDrive',
+        pageBuilder: (context, state) {
+          final providerId = state.pathParameters['providerId'] ?? '';
+          final bookingId = state.pathParameters['bookingId'] ?? '';
+          return _buildPageWithSlideTransition(
+            context,
+            state,
+            _providerThemed(
+              BookingDriveScreen(
+                bookingId: bookingId,
+                actorId: providerId,
+                role: BookingDriveScreenRole.provider,
+              ),
+            ),
+          );
+        },
+      ),
 
       // ==================== Provider Authentication Routes ====================
       GoRoute(
@@ -1177,6 +1215,23 @@ class AppRouter {
           state,
           const AdminProviderEarningsScreen(),
         ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.adminBookingDrive}/:bookingId',
+        name: 'adminBookingDrive',
+        pageBuilder: (context, state) {
+          final bookingId = state.pathParameters['bookingId'] ?? '';
+          final user = FirebaseAuth.instance.currentUser;
+          return _buildPageWithSlideTransition(
+            context,
+            state,
+            BookingDriveScreen(
+              bookingId: bookingId,
+              actorId: user?.uid ?? '',
+              role: BookingDriveScreenRole.admin,
+            ),
+          );
+        },
       ),
     ],
 

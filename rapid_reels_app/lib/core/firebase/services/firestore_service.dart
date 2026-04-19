@@ -16,6 +16,7 @@ import '../models/firebase_live_event_model.dart';
 import '../models/firebase_admin_model.dart';
 import '../models/firebase_catalogue_event_model.dart';
 import '../models/firebase_payment_transaction_model.dart';
+import '../models/firebase_booking_drive_model.dart';
 
 /// Comprehensive Firestore Service
 /// Handles all database operations for Rapid Reels
@@ -40,14 +41,17 @@ class FirestoreService {
   /// Create or update user
   Future<void> setUser(FirebaseUserModel user) async {
     try {
-      await _firestore.collection('users').doc(user.userId).set(user.toFirestore());
+      await _firestore
+          .collection('users')
+          .doc(user.userId)
+          .set(user.toFirestore());
     } catch (e) {
       // Provide more detailed error information
       if (e.toString().contains('PERMISSION_DENIED')) {
         throw Exception(
           'Permission denied: Firestore security rules are blocking this operation. '
           'Please deploy the security rules from firestore.rules file to Firebase Console. '
-          'See FIRESTORE_SECURITY_RULES_SETUP.md for instructions. Error: $e'
+          'See FIRESTORE_SECURITY_RULES_SETUP.md for instructions. Error: $e',
         );
       }
       throw Exception('Error setting user: $e');
@@ -90,7 +94,10 @@ class FirestoreService {
   /// Get provider by ID
   Future<FirebaseProviderModel?> getProvider(String providerId) async {
     try {
-      final doc = await _firestore.collection('providers').doc(providerId).get();
+      final doc = await _firestore
+          .collection('providers')
+          .doc(providerId)
+          .get();
       if (doc.exists) {
         return FirebaseProviderModel.fromFirestore(doc);
       }
@@ -101,7 +108,11 @@ class FirestoreService {
   }
 
   Stream<FirebaseProviderModel?> streamProviderDoc(String providerId) {
-    return _firestore.collection('providers').doc(providerId).snapshots().map(
+    return _firestore
+        .collection('providers')
+        .doc(providerId)
+        .snapshots()
+        .map(
           (doc) => doc.exists ? FirebaseProviderModel.fromFirestore(doc) : null,
         );
   }
@@ -109,14 +120,20 @@ class FirestoreService {
   /// Create or update provider
   Future<void> setProvider(FirebaseProviderModel provider) async {
     try {
-      await _firestore.collection('providers').doc(provider.providerId).set(provider.toFirestore());
+      await _firestore
+          .collection('providers')
+          .doc(provider.providerId)
+          .set(provider.toFirestore());
     } catch (e) {
       throw Exception('Error setting provider: $e');
     }
   }
 
   /// Update provider fields (partial update)
-  Future<void> updateProvider(String providerId, Map<String, dynamic> updates) async {
+  Future<void> updateProvider(
+    String providerId,
+    Map<String, dynamic> updates,
+  ) async {
     try {
       updates['updatedAt'] = Timestamp.now();
       await _firestore.collection('providers').doc(providerId).update(updates);
@@ -175,15 +192,15 @@ class FirestoreService {
       rejectionReason: null,
       createdAt: now,
       updatedAt: now,
-      metadata: const {
-        'source': 'registration_form',
-      },
+      metadata: const {'source': 'registration_form'},
     );
     await setProvider(model);
   }
 
   /// Get featured providers (isFeatured: true, approved). Optionally filter by city.
-  Future<List<FirebaseProviderModel>> getFeaturedProviders({String? city}) async {
+  Future<List<FirebaseProviderModel>> getFeaturedProviders({
+    String? city,
+  }) async {
     try {
       final all = await getProviders(
         city: city,
@@ -221,7 +238,10 @@ class FirestoreService {
         query = query.where('isVerified', isEqualTo: isVerified);
       }
       if (verificationStatus != null) {
-        query = query.where('verificationStatus', isEqualTo: verificationStatus);
+        query = query.where(
+          'verificationStatus',
+          isEqualTo: verificationStatus,
+        );
       }
       if (minRating != null) {
         query = query.where('rating', isGreaterThanOrEqualTo: minRating);
@@ -232,7 +252,9 @@ class FirestoreService {
           .map((doc) => FirebaseProviderModel.fromFirestore(doc))
           .where((provider) {
             if (eventTypes != null && eventTypes.isNotEmpty) {
-              return provider.eventTypes.any((type) => eventTypes.contains(type));
+              return provider.eventTypes.any(
+                (type) => eventTypes.contains(type),
+              );
             }
             return true;
           })
@@ -259,9 +281,12 @@ class FirestoreService {
 
     try {
       for (final value in candidates) {
+        // Firestore rules allow public reads for active provider docs only.
+        // Include `isActive == true` in the query so rule constraints are satisfiable.
         final snapshot = await _firestore
             .collection('providers')
             .where('phoneNumber', isEqualTo: value)
+            .where('isActive', isEqualTo: true)
             .limit(1)
             .get();
         if (snapshot.docs.isNotEmpty) {
@@ -275,7 +300,10 @@ class FirestoreService {
   }
 
   /// Stream providers
-  Stream<List<FirebaseProviderModel>> streamProviders({String? city, String? verificationStatus}) {
+  Stream<List<FirebaseProviderModel>> streamProviders({
+    String? city,
+    String? verificationStatus,
+  }) {
     Query query = _firestore.collection('providers');
     if (verificationStatus != null) {
       query = query.where('verificationStatus', isEqualTo: verificationStatus);
@@ -287,7 +315,9 @@ class FirestoreService {
       query = query.where('location.city', isEqualTo: city);
     }
     return query.snapshots().map(
-      (snapshot) => snapshot.docs.map((doc) => FirebaseProviderModel.fromFirestore(doc)).toList(),
+      (snapshot) => snapshot.docs
+          .map((doc) => FirebaseProviderModel.fromFirestore(doc))
+          .toList(),
     );
   }
 
@@ -309,7 +339,11 @@ class FirestoreService {
         .collection('providers')
         .where('verificationStatus', isEqualTo: 'pending')
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => FirebaseProviderModel.fromFirestore(doc)).toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => FirebaseProviderModel.fromFirestore(doc))
+              .toList(),
+        );
   }
 
   /// Update provider verification status from admin panel
@@ -341,24 +375,39 @@ class FirestoreService {
   // ==================== PROVIDER CATALOGUE EVENTS ====================
   /// Subcollection: `providers/{providerId}/catalogue_events/{catalogueEventId}`
 
-  CollectionReference<Map<String, dynamic>> _catalogueCollection(String providerId) {
-    return _firestore.collection('providers').doc(providerId).collection('catalogue_events');
+  CollectionReference<Map<String, dynamic>> _catalogueCollection(
+    String providerId,
+  ) {
+    return _firestore
+        .collection('providers')
+        .doc(providerId)
+        .collection('catalogue_events');
   }
 
-  Stream<List<FirebaseCatalogueEventModel>> streamCatalogueEvents(String providerId) {
+  Stream<List<FirebaseCatalogueEventModel>> streamCatalogueEvents(
+    String providerId,
+  ) {
     return _catalogueCollection(providerId).snapshots().map((snapshot) {
-      final list =
-          snapshot.docs.map((doc) => FirebaseCatalogueEventModel.fromFirestore(doc, providerId)).toList();
+      final list = snapshot.docs
+          .map(
+            (doc) => FirebaseCatalogueEventModel.fromFirestore(doc, providerId),
+          )
+          .toList();
       list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       return list;
     });
   }
 
-  Future<List<FirebaseCatalogueEventModel>> getCatalogueEvents(String providerId) async {
+  Future<List<FirebaseCatalogueEventModel>> getCatalogueEvents(
+    String providerId,
+  ) async {
     try {
       final snapshot = await _catalogueCollection(providerId).get();
-      final list =
-          snapshot.docs.map((doc) => FirebaseCatalogueEventModel.fromFirestore(doc, providerId)).toList();
+      final list = snapshot.docs
+          .map(
+            (doc) => FirebaseCatalogueEventModel.fromFirestore(doc, providerId),
+          )
+          .toList();
       list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
       return list;
     } catch (e) {
@@ -371,7 +420,9 @@ class FirestoreService {
     String catalogueEventId,
   ) async {
     try {
-      final doc = await _catalogueCollection(providerId).doc(catalogueEventId).get();
+      final doc = await _catalogueCollection(
+        providerId,
+      ).doc(catalogueEventId).get();
       if (!doc.exists) return null;
       return FirebaseCatalogueEventModel.fromFirestore(doc, providerId);
     } catch (e) {
@@ -380,21 +431,29 @@ class FirestoreService {
   }
 
   /// Creates new doc when [model.catalogueEventId] is empty; otherwise overwrites.
-  Future<String> upsertCatalogueEvent(String providerId, FirebaseCatalogueEventModel model) async {
+  Future<String> upsertCatalogueEvent(
+    String providerId,
+    FirebaseCatalogueEventModel model,
+  ) async {
     try {
       final col = _catalogueCollection(providerId);
       if (model.catalogueEventId.isEmpty) {
         final ref = await col.add(model.toFirestore());
         return ref.id;
       }
-      await col.doc(model.catalogueEventId).set(model.toFirestore(), SetOptions(merge: true));
+      await col
+          .doc(model.catalogueEventId)
+          .set(model.toFirestore(), SetOptions(merge: true));
       return model.catalogueEventId;
     } catch (e) {
       throw Exception('Error saving catalogue event: $e');
     }
   }
 
-  Future<void> deleteCatalogueEvent(String providerId, String catalogueEventId) async {
+  Future<void> deleteCatalogueEvent(
+    String providerId,
+    String catalogueEventId,
+  ) async {
     try {
       await _catalogueCollection(providerId).doc(catalogueEventId).delete();
     } catch (e) {
@@ -435,7 +494,9 @@ class FirestoreService {
   /// Create booking
   Future<String> createBooking(FirebaseBookingModel booking) async {
     try {
-      final docRef = await _firestore.collection('bookings').add(booking.toFirestore());
+      final docRef = await _firestore
+          .collection('bookings')
+          .add(booking.toFirestore());
       return docRef.id;
     } catch (e) {
       throw Exception('Error creating booking: $e');
@@ -446,7 +507,9 @@ class FirestoreService {
   /// Also writes `providers/{providerId}/schedule/{eventDateKey}` (server-side only writes).
   Future<String> createBookingIfAvailable(FirebaseBookingModel booking) async {
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('createBookingIfAvailable');
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'createBookingIfAvailable',
+      );
       final payload = BookingCallablePayload.encode(booking);
       final result = await callable.call({'booking': payload});
       final raw = result.data;
@@ -507,7 +570,10 @@ class FirestoreService {
   }
 
   /// Update booking
-  Future<void> updateBooking(String bookingId, Map<String, dynamic> updates) async {
+  Future<void> updateBooking(
+    String bookingId,
+    Map<String, dynamic> updates,
+  ) async {
     try {
       updates['updatedAt'] = Timestamp.now();
       await _firestore.collection('bookings').doc(bookingId).update(updates);
@@ -516,29 +582,204 @@ class FirestoreService {
     }
   }
 
-  /// Get user bookings
-  Future<List<FirebaseBookingModel>> getUserBookings(String userId, {String? status}) async {
+  DocumentReference<Map<String, dynamic>> _bookingDriveMetaRef(
+    String bookingId,
+  ) {
+    return _firestore
+        .collection('bookings')
+        .doc(bookingId)
+        .collection('drive')
+        .doc('meta');
+  }
+
+  CollectionReference<Map<String, dynamic>> _bookingDriveFilesCollection(
+    String bookingId,
+  ) {
+    return _firestore
+        .collection('bookings')
+        .doc(bookingId)
+        .collection('driveFiles');
+  }
+
+  Future<void> ensureBookingDriveMeta(String bookingId) async {
     try {
-      Query query = _firestore.collection('bookings').where('customerId', isEqualTo: userId);
+      final metaRef = _bookingDriveMetaRef(bookingId);
+      final snapshot = await metaRef.get();
+      if (snapshot.exists) return;
+      final model = FirebaseBookingDriveMetaModel.defaultForBooking(bookingId);
+      await metaRef.set(model.toFirestore());
+    } catch (e) {
+      throw Exception('Error ensuring booking drive meta: $e');
+    }
+  }
+
+  Future<FirebaseBookingDriveMetaModel?> getBookingDriveMeta(
+    String bookingId,
+  ) async {
+    try {
+      final snapshot = await _bookingDriveMetaRef(bookingId).get();
+      if (!snapshot.exists) return null;
+      return FirebaseBookingDriveMetaModel.fromFirestore(
+        bookingId,
+        snapshot.data() ?? <String, dynamic>{},
+      );
+    } catch (e) {
+      throw Exception('Error getting booking drive meta: $e');
+    }
+  }
+
+  Stream<FirebaseBookingDriveMetaModel?> streamBookingDriveMeta(
+    String bookingId,
+  ) {
+    return _bookingDriveMetaRef(bookingId).snapshots().map((snapshot) {
+      if (!snapshot.exists) return null;
+      return FirebaseBookingDriveMetaModel.fromFirestore(
+        bookingId,
+        snapshot.data() ?? <String, dynamic>{},
+      );
+    });
+  }
+
+  Future<void> setBookingDriveShareStatus({
+    required String bookingId,
+    required bool isSharedWithCustomer,
+    required String adminUserId,
+  }) async {
+    try {
+      await _bookingDriveMetaRef(bookingId).set({
+        'bookingId': bookingId,
+        'isSharedWithCustomer': isSharedWithCustomer,
+        'approvedByAdminId': adminUserId,
+        'approvedByAdminAt': isSharedWithCustomer ? Timestamp.now() : null,
+        'updatedAt': Timestamp.now(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Error updating booking drive share status: $e');
+    }
+  }
+
+  Future<String> createOrGetBookingShareLink({
+    required String bookingId,
+  }) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'createOrGetBookingShareLink',
+      );
+      final result = await callable.call(<String, dynamic>{
+        'bookingId': bookingId,
+      });
+      final raw = result.data;
+      if (raw is! Map) {
+        throw Exception('Invalid share link response');
+      }
+      final data = Map<String, dynamic>.from(raw);
+      final url = data['url']?.toString() ?? '';
+      if (url.isEmpty) {
+        throw Exception('Share URL missing in response');
+      }
+      return url;
+    } on FirebaseFunctionsException catch (e) {
+      throw Exception(e.message ?? 'Unable to generate share link');
+    } catch (e) {
+      throw Exception('Error generating booking share link: $e');
+    }
+  }
+
+  Future<String> upsertBookingDriveFile(
+    FirebaseBookingDriveFileModel file,
+  ) async {
+    try {
+      final collection = _bookingDriveFilesCollection(file.bookingId);
+      final docRef = file.fileId.isEmpty
+          ? collection.doc()
+          : collection.doc(file.fileId);
+      final toWrite = file
+          .copyWith(fileId: docRef.id, uploadedAt: file.uploadedAt)
+          .toFirestore();
+      toWrite['updatedAt'] = Timestamp.now();
+      await docRef.set(toWrite, SetOptions(merge: true));
+      return docRef.id;
+    } catch (e) {
+      throw Exception('Error upserting booking drive file: $e');
+    }
+  }
+
+  Future<void> softDeleteBookingDriveFile({
+    required String bookingId,
+    required String fileId,
+  }) async {
+    try {
+      await _bookingDriveFilesCollection(bookingId).doc(fileId).set({
+        'isDeleted': true,
+        'updatedAt': Timestamp.now(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Error soft deleting booking drive file: $e');
+    }
+  }
+
+  Stream<List<FirebaseBookingDriveFileModel>> streamBookingDriveFiles(
+    String bookingId, {
+    BookingDriveFolderType? folderType,
+    bool includeDeleted = false,
+  }) {
+    // Avoid composite-index dependency for role/folder listing.
+    return _bookingDriveFilesCollection(bookingId).snapshots().map((snapshot) {
+      var list = snapshot.docs
+          .map(
+            (doc) =>
+                FirebaseBookingDriveFileModel.fromFirestore(doc.id, doc.data()),
+          )
+          .toList();
+
+      if (folderType != null) {
+        list = list.where((f) => f.folderType == folderType).toList();
+      }
+      if (!includeDeleted) {
+        list = list.where((f) => !f.isDeleted).toList();
+      }
+      list.sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
+      return list;
+    });
+  }
+
+  /// Get user bookings
+  Future<List<FirebaseBookingModel>> getUserBookings(
+    String userId, {
+    String? status,
+  }) async {
+    try {
+      Query query = _firestore
+          .collection('bookings')
+          .where('customerId', isEqualTo: userId);
       if (status != null) {
         query = query.where('status', isEqualTo: status);
       }
       final snapshot = await query.orderBy('eventDate', descending: true).get();
-      return snapshot.docs.map((doc) => FirebaseBookingModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => FirebaseBookingModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       throw Exception('Error getting user bookings: $e');
     }
   }
 
   /// Get provider bookings
-  Future<List<FirebaseBookingModel>> getProviderBookings(String providerId, {String? status}) async {
+  Future<List<FirebaseBookingModel>> getProviderBookings(
+    String providerId, {
+    String? status,
+  }) async {
     try {
-      Query query = _firestore.collection('bookings').where('providerId', isEqualTo: providerId);
+      Query query = _firestore
+          .collection('bookings')
+          .where('providerId', isEqualTo: providerId);
       if (status != null) {
         query = query.where('status', isEqualTo: status);
       }
       final snapshot = await query.orderBy('eventDate', descending: true).get();
-      return snapshot.docs.map((doc) => FirebaseBookingModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => FirebaseBookingModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       throw Exception('Error getting provider bookings: $e');
     }
@@ -552,7 +793,9 @@ class FirestoreService {
           .collection('bookings')
           .orderBy('createdAt', descending: true)
           .get();
-      var list = snapshot.docs.map((doc) => FirebaseBookingModel.fromFirestore(doc)).toList();
+      var list = snapshot.docs
+          .map((doc) => FirebaseBookingModel.fromFirestore(doc))
+          .toList();
       if (status != null) {
         list = list.where((b) => b.status == status).toList();
       }
@@ -563,32 +806,51 @@ class FirestoreService {
   }
 
   /// Stream provider bookings for real-time updates
-  Stream<List<FirebaseBookingModel>> streamProviderBookings(String providerId, {String? status}) {
-    Query query = _firestore.collection('bookings').where('providerId', isEqualTo: providerId);
+  Stream<List<FirebaseBookingModel>> streamProviderBookings(
+    String providerId, {
+    String? status,
+  }) {
+    Query query = _firestore
+        .collection('bookings')
+        .where('providerId', isEqualTo: providerId);
     if (status != null) {
       query = query.where('status', isEqualTo: status);
     }
     return query
         .orderBy('eventDate', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => FirebaseBookingModel.fromFirestore(doc)).toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => FirebaseBookingModel.fromFirestore(doc))
+              .toList(),
+        );
   }
 
   /// Stream user bookings
-  Stream<List<FirebaseBookingModel>> streamUserBookings(String userId, {String? status}) {
-    Query query = _firestore.collection('bookings').where('customerId', isEqualTo: userId);
+  Stream<List<FirebaseBookingModel>> streamUserBookings(
+    String userId, {
+    String? status,
+  }) {
+    Query query = _firestore
+        .collection('bookings')
+        .where('customerId', isEqualTo: userId);
     if (status != null) {
       query = query.where('status', isEqualTo: status);
     }
     return query
         .orderBy('eventDate', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => FirebaseBookingModel.fromFirestore(doc)).toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => FirebaseBookingModel.fromFirestore(doc))
+              .toList(),
+        );
   }
 
   // ==================== PAYMENT TRANSACTIONS ====================
 
-  Stream<List<FirebasePaymentTransactionModel>> streamPaymentTransactionsByBooking(String bookingId) {
+  Stream<List<FirebasePaymentTransactionModel>>
+  streamPaymentTransactionsByBooking(String bookingId) {
     return _firestore
         .collection('payment_transactions')
         .where('bookingId', isEqualTo: bookingId)
@@ -601,7 +863,8 @@ class FirestoreService {
         );
   }
 
-  Stream<List<FirebasePaymentTransactionModel>> streamPaymentTransactionsForProvider(String providerId) {
+  Stream<List<FirebasePaymentTransactionModel>>
+  streamPaymentTransactionsForProvider(String providerId) {
     return _firestore
         .collection('payment_transactions')
         .where('providerUserId', isEqualTo: providerId)
@@ -614,7 +877,8 @@ class FirestoreService {
         );
   }
 
-  Stream<List<FirebasePaymentTransactionModel>> streamPaymentTransactionsForCustomer(String customerUserId) {
+  Stream<List<FirebasePaymentTransactionModel>>
+  streamPaymentTransactionsForCustomer(String customerUserId) {
     return _firestore
         .collection('payment_transactions')
         .where('customerUserId', isEqualTo: customerUserId)
@@ -627,12 +891,15 @@ class FirestoreService {
         );
   }
 
-  Stream<List<FirebasePaymentTransactionModel>> streamPaymentTransactionsForAdmin({
+  Stream<List<FirebasePaymentTransactionModel>>
+  streamPaymentTransactionsForAdmin({
     String? status,
     String? bookingId,
     String? providerUserId,
   }) {
-    Query<Map<String, dynamic>> query = _firestore.collection('payment_transactions');
+    Query<Map<String, dynamic>> query = _firestore.collection(
+      'payment_transactions',
+    );
     if (status != null && status.isNotEmpty) {
       query = query.where('status', isEqualTo: status);
     }
@@ -650,7 +917,9 @@ class FirestoreService {
     );
   }
 
-  Future<FirebasePaymentTransactionModel?> getPaymentTransactionByTransactionId(String transactionId) async {
+  Future<FirebasePaymentTransactionModel?> getPaymentTransactionByTransactionId(
+    String transactionId,
+  ) async {
     try {
       final snapshot = await _firestore
           .collection('payment_transactions')
@@ -692,7 +961,9 @@ class FirestoreService {
   /// Create reel
   Future<String> createReel(FirebaseReelModel reel) async {
     try {
-      final docRef = await _firestore.collection('reels').add(reel.toFirestore());
+      final docRef = await _firestore
+          .collection('reels')
+          .add(reel.toFirestore());
       return docRef.id;
     } catch (e) {
       throw Exception('Error creating reel: $e');
@@ -716,7 +987,9 @@ class FirestoreService {
           .collection('reels')
           .where('customerId', isEqualTo: userId)
           .get();
-      final reels = snapshot.docs.map((doc) => FirebaseReelModel.fromFirestore(doc)).toList();
+      final reels = snapshot.docs
+          .map((doc) => FirebaseReelModel.fromFirestore(doc))
+          .toList();
       reels.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reels;
     } catch (e) {
@@ -742,7 +1015,9 @@ class FirestoreService {
           .where('bookingId', isEqualTo: bookingId)
           .orderBy('createdAt', descending: true)
           .get();
-      return snapshot.docs.map((doc) => FirebaseReelModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => FirebaseReelModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       throw Exception('Error getting booking reels: $e');
     }
@@ -757,7 +1032,9 @@ class FirestoreService {
           .collection('reels')
           .where('providerId', isEqualTo: providerId)
           .get();
-      final reels = snapshot.docs.map((doc) => FirebaseReelModel.fromFirestore(doc)).toList();
+      final reels = snapshot.docs
+          .map((doc) => FirebaseReelModel.fromFirestore(doc))
+          .toList();
       reels.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return reels;
     } catch (e) {
@@ -872,9 +1149,7 @@ class FirestoreService {
           final currentLikes = ((analytics['likes'] ?? 0) as num).toInt();
           transaction.update(docRef, {
             'likedBy': likedBy,
-            'analytics.likes': currentLikes > 0
-                ? FieldValue.increment(-1)
-                : 0,
+            'analytics.likes': currentLikes > 0 ? FieldValue.increment(-1) : 0,
           });
           return false;
         } else {
@@ -938,9 +1213,11 @@ class FirestoreService {
 
   /// Live updates for a single reel document (analytics, likedBy, etc.).
   Stream<FirebaseReelModel?> streamReel(String reelId) {
-    return _firestore.collection('reels').doc(reelId).snapshots().map(
-          (doc) => doc.exists ? FirebaseReelModel.fromFirestore(doc) : null,
-        );
+    return _firestore
+        .collection('reels')
+        .doc(reelId)
+        .snapshots()
+        .map((doc) => doc.exists ? FirebaseReelModel.fromFirestore(doc) : null);
   }
 
   /// Comments on a reel, newest first.
@@ -965,7 +1242,9 @@ class FirestoreService {
   /// Create review
   Future<String> createReview(FirebaseReviewModel review) async {
     try {
-      final docRef = await _firestore.collection('reviews').add(review.toFirestore());
+      final docRef = await _firestore
+          .collection('reviews')
+          .add(review.toFirestore());
       return docRef.id;
     } catch (e) {
       throw Exception('Error creating review: $e');
@@ -973,7 +1252,9 @@ class FirestoreService {
   }
 
   /// Get provider reviews
-  Future<List<FirebaseReviewModel>> getProviderReviews(String providerId) async {
+  Future<List<FirebaseReviewModel>> getProviderReviews(
+    String providerId,
+  ) async {
     try {
       final snapshot = await _firestore
           .collection('reviews')
@@ -981,7 +1262,9 @@ class FirestoreService {
           .where('status', isEqualTo: 'approved')
           .orderBy('createdAt', descending: true)
           .get();
-      return snapshot.docs.map((doc) => FirebaseReviewModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => FirebaseReviewModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       throw Exception('Error getting provider reviews: $e');
     }
@@ -989,7 +1272,9 @@ class FirestoreService {
 
   /// Get homepage-ready reviews (approved + public).
   /// Note: city-based filtering should typically be done client-side after joining providers.
-  Future<List<FirebaseReviewModel>> getApprovedPublicReviews({int limit = 50}) async {
+  Future<List<FirebaseReviewModel>> getApprovedPublicReviews({
+    int limit = 50,
+  }) async {
     try {
       final snapshot = await _firestore
           .collection('reviews')
@@ -1025,14 +1310,19 @@ class FirestoreService {
         query = query.limit(limit);
       }
       final snapshot = await query.get();
-      return snapshot.docs.map((doc) => FirebaseReviewModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => FirebaseReviewModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       throw Exception('Error getting reviews for admin: $e');
     }
   }
 
   /// Admin: update review partial fields (e.g., `status`, `isPublic`)
-  Future<void> updateReview(String reviewId, Map<String, dynamic> updates) async {
+  Future<void> updateReview(
+    String reviewId,
+    Map<String, dynamic> updates,
+  ) async {
     try {
       await _firestore.collection('reviews').doc(reviewId).update({
         ...updates,
@@ -1048,7 +1338,9 @@ class FirestoreService {
   /// Create referral
   Future<String> createReferral(FirebaseReferralModel referral) async {
     try {
-      final docRef = await _firestore.collection('referrals').add(referral.toFirestore());
+      final docRef = await _firestore
+          .collection('referrals')
+          .add(referral.toFirestore());
       return docRef.id;
     } catch (e) {
       throw Exception('Error creating referral: $e');
@@ -1063,7 +1355,9 @@ class FirestoreService {
           .where('referrerId', isEqualTo: userId)
           .orderBy('createdAt', descending: true)
           .get();
-      return snapshot.docs.map((doc) => FirebaseReferralModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => FirebaseReferralModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       throw Exception('Error getting user referrals: $e');
     }
@@ -1072,7 +1366,11 @@ class FirestoreService {
   /// Check if referral code exists
   Future<bool> checkReferralCode(String code) async {
     try {
-      final snapshot = await _firestore.collection('users').where('referralCode', isEqualTo: code).limit(1).get();
+      final snapshot = await _firestore
+          .collection('users')
+          .where('referralCode', isEqualTo: code)
+          .limit(1)
+          .get();
       return snapshot.docs.isNotEmpty;
     } catch (e) {
       throw Exception('Error checking referral code: $e');
@@ -1082,21 +1380,26 @@ class FirestoreService {
   // ==================== WALLET ====================
 
   /// Create wallet transaction
-  Future<String> createWalletTransaction(FirebaseWalletTransactionModel transaction) async {
+  Future<String> createWalletTransaction(
+    FirebaseWalletTransactionModel transaction,
+  ) async {
     try {
-      final docRef = await _firestore.collection('wallet_transactions').add(transaction.toFirestore());
-      
+      final docRef = await _firestore
+          .collection('wallet_transactions')
+          .add(transaction.toFirestore());
+
       // Update user wallet balance
       if (transaction.type == 'credit' && transaction.status == 'completed') {
         await _firestore.collection('users').doc(transaction.userId).update({
           'walletBalance': FieldValue.increment(transaction.amount),
         });
-      } else if (transaction.type == 'debit' && transaction.status == 'completed') {
+      } else if (transaction.type == 'debit' &&
+          transaction.status == 'completed') {
         await _firestore.collection('users').doc(transaction.userId).update({
           'walletBalance': FieldValue.increment(-transaction.amount),
         });
       }
-      
+
       return docRef.id;
     } catch (e) {
       throw Exception('Error creating wallet transaction: $e');
@@ -1106,7 +1409,9 @@ class FirestoreService {
   /// Mark booking complete and create provider payout.
   /// Fetches provider for commissionRate, calculates net amount, updates booking, creates payout.
   /// Idempotent for payout: skips if payout already exists for this booking.
-  Future<void> completeBookingAndCreatePayout(FirebaseBookingModel booking) async {
+  Future<void> completeBookingAndCreatePayout(
+    FirebaseBookingModel booking,
+  ) async {
     final provider = await getProvider(booking.providerId);
     final commissionRate = provider?.commissionRate ?? 0.0;
     final netAmount = booking.payment.totalAmount * (1 - commissionRate / 100);
@@ -1117,13 +1422,21 @@ class FirestoreService {
       'eventStatus.eventCompleted': Timestamp.now(),
     });
 
-    await createProviderPayout(booking.providerId, booking.bookingId, netAmount);
+    await createProviderPayout(
+      booking.providerId,
+      booking.bookingId,
+      netAmount,
+    );
   }
 
   /// Create provider payout when booking is marked complete.
   /// Net amount = totalAmount * (1 - commissionRate/100).
   /// Idempotent: skips if payout already exists for this booking.
-  Future<void> createProviderPayout(String providerId, String bookingId, double netAmount) async {
+  Future<void> createProviderPayout(
+    String providerId,
+    String bookingId,
+    double netAmount,
+  ) async {
     try {
       final existing = await _firestore
           .collection('wallet_transactions')
@@ -1148,7 +1461,9 @@ class FirestoreService {
         createdAt: now,
         completedAt: now,
       );
-      await _firestore.collection('wallet_transactions').add(transaction.toFirestore());
+      await _firestore
+          .collection('wallet_transactions')
+          .add(transaction.toFirestore());
     } catch (e) {
       throw Exception('Error creating provider payout: $e');
     }
@@ -1156,7 +1471,9 @@ class FirestoreService {
 
   /// Get all provider payouts (for admin earnings view).
   /// Returns wallet_transactions where type='provider_payout', ordered by createdAt desc.
-  Future<List<FirebaseWalletTransactionModel>> getAllProviderPayouts({int? limit}) async {
+  Future<List<FirebaseWalletTransactionModel>> getAllProviderPayouts({
+    int? limit,
+  }) async {
     try {
       Query query = _firestore
           .collection('wallet_transactions')
@@ -1166,26 +1483,33 @@ class FirestoreService {
         query = query.limit(limit);
       }
       final snapshot = await query.get();
-      return snapshot.docs.map((doc) => FirebaseWalletTransactionModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => FirebaseWalletTransactionModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       throw Exception('Error getting provider payouts: $e');
     }
   }
 
   /// Get user wallet transactions
-  Future<List<FirebaseWalletTransactionModel>> getUserWalletTransactions(String userId, {int? limit}) async {
+  Future<List<FirebaseWalletTransactionModel>> getUserWalletTransactions(
+    String userId, {
+    int? limit,
+  }) async {
     try {
       Query query = _firestore
           .collection('wallet_transactions')
           .where('userId', isEqualTo: userId)
           .orderBy('createdAt', descending: true);
-      
+
       if (limit != null) {
         query = query.limit(limit);
       }
-      
+
       final snapshot = await query.get();
-      return snapshot.docs.map((doc) => FirebaseWalletTransactionModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => FirebaseWalletTransactionModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       throw Exception('Error getting wallet transactions: $e');
     }
@@ -1194,9 +1518,13 @@ class FirestoreService {
   // ==================== NOTIFICATIONS ====================
 
   /// Create notification
-  Future<String> createNotification(FirebaseNotificationModel notification) async {
+  Future<String> createNotification(
+    FirebaseNotificationModel notification,
+  ) async {
     try {
-      final docRef = await _firestore.collection('notifications').add(notification.toFirestore());
+      final docRef = await _firestore
+          .collection('notifications')
+          .add(notification.toFirestore());
       return docRef.id;
     } catch (e) {
       throw Exception('Error creating notification: $e');
@@ -1204,23 +1532,29 @@ class FirestoreService {
   }
 
   /// Get user notifications
-  Future<List<FirebaseNotificationModel>> getUserNotifications(String userId, {bool? isRead, int? limit}) async {
+  Future<List<FirebaseNotificationModel>> getUserNotifications(
+    String userId, {
+    bool? isRead,
+    int? limit,
+  }) async {
     try {
       Query query = _firestore
           .collection('notifications')
           .where('userId', isEqualTo: userId)
           .orderBy('createdAt', descending: true);
-      
+
       if (isRead != null) {
         query = query.where('isRead', isEqualTo: isRead);
       }
-      
+
       if (limit != null) {
         query = query.limit(limit);
       }
-      
+
       final snapshot = await query.get();
-      return snapshot.docs.map((doc) => FirebaseNotificationModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => FirebaseNotificationModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       throw Exception('Error getting notifications: $e');
     }
@@ -1239,14 +1573,20 @@ class FirestoreService {
   }
 
   /// Stream user notifications
-  Stream<List<FirebaseNotificationModel>> streamUserNotifications(String userId) {
+  Stream<List<FirebaseNotificationModel>> streamUserNotifications(
+    String userId,
+  ) {
     return _firestore
         .collection('notifications')
         .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .limit(50)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => FirebaseNotificationModel.fromFirestore(doc)).toList());
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => FirebaseNotificationModel.fromFirestore(doc))
+              .toList(),
+        );
   }
 
   // ==================== OFFERS ====================
@@ -1258,13 +1598,15 @@ class FirestoreService {
           .collection('offers')
           .where('isActive', isEqualTo: true)
           .where('isPublic', isEqualTo: true);
-      
+
       if (eventType != null) {
         query = query.where('applicableEventTypes', arrayContains: eventType);
       }
-      
+
       final snapshot = await query.get();
-      return snapshot.docs.map((doc) => FirebaseOfferModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => FirebaseOfferModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       throw Exception('Error getting offers: $e');
     }
@@ -1332,18 +1674,28 @@ class FirestoreService {
   }
 
   /// Validate offer code
-  Future<FirebaseOfferModel?> validateOfferCode(String code, String userId) async {
+  Future<FirebaseOfferModel?> validateOfferCode(
+    String code,
+    String userId,
+  ) async {
     try {
-      final snapshot = await _firestore.collection('offers').where('code', isEqualTo: code).limit(1).get();
+      final snapshot = await _firestore
+          .collection('offers')
+          .where('code', isEqualTo: code)
+          .limit(1)
+          .get();
       if (snapshot.docs.isEmpty) return null;
-      
+
       final offer = FirebaseOfferModel.fromFirestore(snapshot.docs.first);
-      
+
       // Check if offer is valid
       if (!offer.isActive) return null;
-      if (offer.expiresAt != null && offer.expiresAt!.isBefore(DateTime.now())) return null;
+      if (offer.expiresAt != null &&
+          offer.expiresAt!.isBefore(DateTime.now())) {
+        return null;
+      }
       if (offer.usedCount >= offer.maxUses) return null;
-      
+
       // Check user eligibility
       final usageSnapshot = await _firestore
           .collection('users')
@@ -1351,7 +1703,7 @@ class FirestoreService {
           .collection('offer_usage')
           .doc(offer.offerId)
           .get();
-      
+
       if (usageSnapshot.exists) {
         final usage = FirebaseUserOfferUsageModel.fromFirestore(usageSnapshot);
         if (offer.eligibility.maxUsesPerUser != null &&
@@ -1359,7 +1711,7 @@ class FirestoreService {
           return null;
         }
       }
-      
+
       return offer;
     } catch (e) {
       throw Exception('Error validating offer code: $e');
@@ -1371,7 +1723,10 @@ class FirestoreService {
   /// Get live event
   Future<FirebaseLiveEventModel?> getLiveEvent(String bookingId) async {
     try {
-      final doc = await _firestore.collection('live_events').doc(bookingId).get();
+      final doc = await _firestore
+          .collection('live_events')
+          .doc(bookingId)
+          .get();
       if (doc.exists) {
         return FirebaseLiveEventModel.fromFirestore(doc);
       }
@@ -1384,7 +1739,10 @@ class FirestoreService {
   /// Create or update live event
   Future<void> setLiveEvent(FirebaseLiveEventModel liveEvent) async {
     try {
-      await _firestore.collection('live_events').doc(liveEvent.bookingId).set(liveEvent.toFirestore());
+      await _firestore
+          .collection('live_events')
+          .doc(liveEvent.bookingId)
+          .set(liveEvent.toFirestore());
     } catch (e) {
       throw Exception('Error setting live event: $e');
     }
@@ -1396,7 +1754,10 @@ class FirestoreService {
         .collection('live_events')
         .doc(bookingId)
         .snapshots()
-        .map((doc) => doc.exists ? FirebaseLiveEventModel.fromFirestore(doc) : null);
+        .map(
+          (doc) =>
+              doc.exists ? FirebaseLiveEventModel.fromFirestore(doc) : null,
+        );
   }
 
   // ==================== ADMIN ====================
@@ -1404,7 +1765,10 @@ class FirestoreService {
   /// Get admin analytics
   Future<FirebaseAdminAnalyticsModel?> getAdminAnalytics(String date) async {
     try {
-      final doc = await _firestore.collection('admin_analytics').doc(date).get();
+      final doc = await _firestore
+          .collection('admin_analytics')
+          .doc(date)
+          .get();
       if (doc.exists) {
         return FirebaseAdminAnalyticsModel.fromFirestore(doc);
       }
@@ -1464,8 +1828,10 @@ class FirestoreService {
     int? limit,
   }) async {
     try {
-      Query query = _firestore.collection('support_tickets').orderBy('createdAt', descending: true);
-      
+      Query query = _firestore
+          .collection('support_tickets')
+          .orderBy('createdAt', descending: true);
+
       if (status != null) {
         query = query.where('status', isEqualTo: status);
       }
@@ -1475,9 +1841,11 @@ class FirestoreService {
       if (limit != null) {
         query = query.limit(limit);
       }
-      
+
       final snapshot = await query.get();
-      return snapshot.docs.map((doc) => FirebaseSupportTicketModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => FirebaseSupportTicketModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       throw Exception('Error getting support tickets: $e');
     }
@@ -1486,7 +1854,9 @@ class FirestoreService {
   /// Create support ticket
   Future<String> createSupportTicket(FirebaseSupportTicketModel ticket) async {
     try {
-      final docRef = await _firestore.collection('support_tickets').add(ticket.toFirestore());
+      final docRef = await _firestore
+          .collection('support_tickets')
+          .add(ticket.toFirestore());
       return docRef.id;
     } catch (e) {
       throw Exception('Error creating support ticket: $e');
@@ -1522,4 +1892,3 @@ class FirestoreService {
     }
   }
 }
-

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/firebase/services/firestore_service.dart';
@@ -9,6 +10,7 @@ import '../../../../core/theme/provider_app_theme.dart';
 import '../../../../shared/widgets/provider/provider_action_card.dart';
 import '../../../../shared/widgets/provider/provider_stat_card.dart';
 import '../../../notifications/presentation/screens/notifications_screen.dart';
+import '../services/veriff_verification_service.dart';
 
 bool isSameDay(DateTime? a, DateTime? b) {
   if (a == null || b == null) return false;
@@ -29,11 +31,13 @@ class ProviderDashboardScreen extends StatefulWidget {
 
 class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  final VeriffVerificationService _veriffService = VeriffVerificationService();
+  bool _isStartingVerification = false;
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<FirebaseProviderModel?>(
-      future: _firestoreService.getProvider(widget.providerId),
+    return StreamBuilder<FirebaseProviderModel?>(
+      stream: _firestoreService.streamProviderDoc(widget.providerId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
@@ -160,6 +164,11 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   ) {
     final cs = Theme.of(context).colorScheme;
     return [
+      if (_shouldShowVerificationCard(provider))
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _buildVerificationCard(context, provider),
+        ),
       if (provider.verificationStatus != 'approved')
         Padding(
           padding: const EdgeInsets.only(bottom: 16),
@@ -327,6 +336,147 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
           ),
         ),
     ];
+  }
+
+  bool _shouldShowVerificationCard(FirebaseProviderModel provider) {
+    final status = _veriffStatus(provider);
+    return status != 'approved';
+  }
+
+  String _veriffStatus(FirebaseProviderModel provider) {
+    return provider.veriffStatus;
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'session_created':
+        return 'Session created';
+      case 'in_progress':
+        return 'In progress';
+      case 'submitted':
+        return 'Submitted';
+      case 'approved':
+        return 'Approved';
+      case 'declined':
+        return 'Declined';
+      case 'resubmission_requested':
+        return 'Resubmission requested';
+      case 'expired':
+        return 'Expired';
+      case 'abandoned':
+        return 'Abandoned';
+      case 'error':
+        return 'Error';
+      default:
+        return 'Not started';
+    }
+  }
+
+  bool _canRetry(String status) {
+    return status == 'declined' ||
+        status == 'resubmission_requested' ||
+        status == 'expired' ||
+        status == 'abandoned' ||
+        status == 'error';
+  }
+
+  Future<void> _startVerification(FirebaseProviderModel provider) async {
+    if (_isStartingVerification) return;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || currentUser.uid != provider.providerId) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in again to continue verification.')),
+      );
+      return;
+    }
+
+    setState(() => _isStartingVerification = true);
+    try {
+      final result = await _veriffService.startProviderVerification(
+        providerId: provider.providerId,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.userMessage)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Verification start failed: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isStartingVerification = false);
+      }
+    }
+  }
+
+  Widget _buildVerificationCard(
+    BuildContext context,
+    FirebaseProviderModel provider,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    final status = _veriffStatus(provider);
+    final statusLabel = _statusLabel(status);
+    final ctaText = _canRetry(status) ? 'Retry verification' : 'Start verification';
+
+    return Material(
+      color: cs.secondaryContainer.withValues(alpha: 0.35),
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.verified_user, color: cs.primary, size: 20),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Identity verification required',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Status: $statusLabel',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Upload one supported ID document in Veriff (passport, ID card, or driving licence).',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).hintColor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isStartingVerification || status == 'approved'
+                    ? null
+                    : () => _startVerification(provider),
+                child: _isStartingVerification
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(ctaText),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildReelsSection(BuildContext context, FirebaseProviderModel provider) {

@@ -331,11 +331,11 @@ class EventDetailsScreen extends ConsumerWidget {
       case 'pending':
         return 'Pending';
       case 'confirmed':
-        return 'Confirmed';
+        return 'Provider Accepted';
       case 'ongoing':
-        return 'Live';
+        return 'Arrived';
       case 'completed':
-        return 'Completed';
+        return 'Done';
       case 'cancelled':
         return 'Cancelled';
       default:

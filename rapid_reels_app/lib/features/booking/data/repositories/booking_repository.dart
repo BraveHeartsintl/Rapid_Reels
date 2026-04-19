@@ -4,6 +4,7 @@ import '../adapters/booking_firebase_mappers.dart';
 import '../../../../core/booking/date_availability.dart';
 import '../../../../core/firebase/services/firestore_service.dart';
 import '../../../../core/firebase/models/firebase_booking_model.dart' as fb;
+import '../../../../core/firebase/models/firebase_booking_drive_model.dart';
 
 /// Booking repository - uses Firestore for providers and bookings (dynamic data).
 class BookingRepository {
@@ -153,6 +154,52 @@ class BookingRepository {
       'status': 'completed',
       'completedAt': DateTime.now(),
     });
+  }
+
+  Future<void> ensureBookingDriveMeta(String bookingId) {
+    return _firestore.ensureBookingDriveMeta(bookingId);
+  }
+
+  Stream<FirebaseBookingDriveMetaModel?> streamBookingDriveMeta(String bookingId) {
+    return _firestore.streamBookingDriveMeta(bookingId);
+  }
+
+  Stream<List<FirebaseBookingDriveFileModel>> streamBookingDriveFiles(
+    String bookingId, {
+    BookingDriveFolderType? folderType,
+    bool includeDeleted = false,
+  }) {
+    return _firestore.streamBookingDriveFiles(
+      bookingId,
+      folderType: folderType,
+      includeDeleted: includeDeleted,
+    );
+  }
+
+  Future<void> setBookingDriveShareStatus({
+    required String bookingId,
+    required bool isSharedWithCustomer,
+    required String adminUserId,
+  }) {
+    return _firestore.setBookingDriveShareStatus(
+      bookingId: bookingId,
+      isSharedWithCustomer: isSharedWithCustomer,
+      adminUserId: adminUserId,
+    );
+  }
+
+  Future<String> upsertBookingDriveFile(FirebaseBookingDriveFileModel file) {
+    return _firestore.upsertBookingDriveFile(file);
+  }
+
+  Future<void> softDeleteBookingDriveFile({
+    required String bookingId,
+    required String fileId,
+  }) {
+    return _firestore.softDeleteBookingDriveFile(
+      bookingId: bookingId,
+      fileId: fileId,
+    );
   }
 
   /// Convert EventBooking to FirebaseBookingModel for create (bookingId will be assigned by Firestore).

@@ -401,12 +401,12 @@ class _EnhancedMyEventsScreenState extends ConsumerState<EnhancedMyEventsScreen>
         break;
       case 'ongoing':
         color = Colors.green;
-        text = 'Live';
+        text = 'Arrived';
         icon = Icons.fiber_manual_record;
         break;
       case 'past':
         color = AppColors.primary;
-        text = 'Completed';
+        text = 'Done';
         icon = Icons.check_circle;
         break;
       default:
