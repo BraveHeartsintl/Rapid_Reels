@@ -804,10 +804,6 @@ const veriffApiKey = defineSecret("VERIFF_API_KEY");
 const veriffApiSecret = defineSecret("VERIFF_API_SECRET");
 const veriffWebhookClientId = defineSecret("VERIFF_WEBHOOK_CLIENT_ID");
 const veriffWebhookSharedSecret = defineSecret("VERIFF_WEBHOOK_SHARED_SECRET");
-const STRIPE_TEST_CHARGE_GBP = 2.0;
-const STRIPE_TEST_CHARGE_FLAG = String(
-    process.env.STRIPE_TEST_CHARGE_ENABLED || "",
-).toLowerCase();
 
 // Emulator: use `functions/.env`. Deployed: secrets bound via `secrets` on each function.
 function resolveStripeApiKey() {
@@ -1383,18 +1379,7 @@ exports.createStripePaymentIntent = onCall(
               "Only GBP payments are supported",
           );
         }
-        // Test mode default: with `sk_test` keys we charge £2 unless explicitly disabled.
-        const stripeKey = resolveStripeApiKey();
-        const usingLiveStripeKey = String(stripeKey || "").startsWith("sk_live");
-        const forceTestCharge = STRIPE_TEST_CHARGE_FLAG === "true";
-        const disableTestCharge = STRIPE_TEST_CHARGE_FLAG === "false";
-        const effectiveTestChargeEnabled = forceTestCharge ||
-          (!usingLiveStripeKey && !disableTestCharge);
-
-        const stripeChargeAmount = effectiveTestChargeEnabled ?
-          STRIPE_TEST_CHARGE_GBP :
-          advanceAmount;
-        const amountInSmallestUnit = Math.round(stripeChargeAmount * 100);
+        const amountInSmallestUnit = Math.round(advanceAmount * 100);
         if (!Number.isFinite(amountInSmallestUnit) || amountInSmallestUnit <= 0) {
           throw new HttpsError("failed-precondition", "Invalid booking amount");
         }
@@ -1416,9 +1401,7 @@ exports.createStripePaymentIntent = onCall(
             bookingId: String(bookingId),
             customerUserId: String(uid),
             providerUserId: String(booking.providerId || ""),
-            isTestChargeOverride: effectiveTestChargeEnabled ? "true" : "false",
-            originalAdvanceAmount: String(advanceAmount.toFixed(2)),
-            overrideChargeAmount: String(stripeChargeAmount.toFixed(2)),
+            advanceAmount: String(advanceAmount.toFixed(2)),
           },
         }, {idempotencyKey});
 

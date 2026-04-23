@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_model.dart';
 import '../../../../core/firebase/models/firebase_user_model.dart' as fb;
 import '../../../../core/firebase/services/firestore_service.dart';
+import '../../../../core/firebase/services/firebase_init_service.dart';
 
 /// Authentication Repository backed by FirebaseAuth + Firestore
 class AuthRepository {
@@ -35,12 +36,19 @@ class AuthRepository {
     Function(UserCredential)? onAutoVerify,
   }) async {
     final completer = Completer<void>();
+    const forceRecaptchaForTesting = bool.fromEnvironment(
+      'FORCE_RECAPTCHA_FLOW',
+      defaultValue: false,
+    );
 
     try {
-      // Force reCAPTCHA v2 flow for better compatibility
-      await _firebaseAuth.setSettings(
-        forceRecaptchaFlow: true,
-      );
+      // Keep production on default Firebase behavior: Play Integrity first,
+      // then reCAPTCHA fallback when required.
+      if (kDebugMode && forceRecaptchaForTesting) {
+        await _firebaseAuth.setSettings(
+          forceRecaptchaFlow: true,
+        );
+      }
       
       await _firebaseAuth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
@@ -67,6 +75,10 @@ class AuthRepository {
         
         // Error occurred
         verificationFailed: (FirebaseAuthException e) {
+          _recordPhoneAuthFailure(
+            stage: 'verifyPhoneNumber',
+            exception: e,
+          );
           String friendlyMessage = _getFriendlyError(e);
           onError(friendlyMessage);
           if (!completer.isCompleted) completer.completeError(e);
@@ -84,6 +96,11 @@ class AuthRepository {
     } catch (e) {
       if (e is! FirebaseAuthException) {
         onError('Failed to send OTP: ${e.toString()}');
+      } else {
+        _recordPhoneAuthFailure(
+          stage: 'verifyPhoneNumber-catch',
+          exception: e,
+        );
       }
     }
   }
@@ -96,6 +113,10 @@ class AuthRepository {
     if (errorMessage.contains('play integrity') || 
         errorMessage.contains('missing a valid app identifier') ||
         errorMessage.contains('recaptcha') ||
+        errorMessage.contains('missing initial state') ||
+        errorMessage.contains('missing activity') ||
+        errorMessage.contains('sha-1') ||
+        errorMessage.contains('sha-256') ||
         e.code == 'missing-client-identifier') {
       return 'App verification failed. Please ensure:\n'
           '1. SHA-1/SHA-256 fingerprints are added in Firebase Console\n'
@@ -109,12 +130,14 @@ class AuthRepository {
         return 'Invalid phone number. Use format: +919876543210';
       case 'too-many-requests':
         return 'Too many attempts. Wait a few minutes and try again.';
+      case 'missing-activity-for-recaptcha':
+        return 'App verification could not launch reCAPTCHA. Please reopen the app and try again.';
       case 'quota-exceeded':
         return 'SMS quota exceeded. Try again later.';
       case 'billing-not-enabled':
         return 'Phone auth needs Firebase Blaze plan. Enable billing in Firebase Console.';
       case 'captcha-check-failed':
-        return 'Verification failed. Please try again or use a test phone number.';
+        return 'reCAPTCHA verification failed. Please try again on a stable network.';
       case 'missing-client-identifier':
         return 'App not verified. Add SHA-1 fingerprint in Firebase Console → Project Settings → Your apps → Android app.';
       default:
@@ -146,6 +169,10 @@ class AuthRepository {
       
       return userCredential;
     } on FirebaseAuthException catch (e) {
+      _recordPhoneAuthFailure(
+        stage: 'verifyOTP',
+        exception: e,
+      );
       // Re-throw Firebase Auth exceptions with friendly messages
       throw FirebaseAuthException(
         code: e.code,
@@ -157,6 +184,22 @@ class AuthRepository {
         message: 'Failed to verify OTP: ${e.toString()}',
       );
     }
+  }
+
+  void _recordPhoneAuthFailure({
+    required String stage,
+    required FirebaseAuthException exception,
+  }) {
+    final reason = '[phone_auth][$stage] code=${exception.code} '
+        'message=${exception.message ?? 'n/a'}';
+    debugPrint(reason);
+    unawaited(
+      FirebaseInitService.logError(
+        exception,
+        StackTrace.current,
+        reason: reason,
+      ),
+    );
   }
 
   // Email Authentication - Sign In

@@ -20,7 +20,7 @@ class PackageSelectionScreen extends StatefulWidget {
 }
 
 class _PackageSelectionScreenState extends State<PackageSelectionScreen> {
-  int _currentIndex = 2; // Default to Gold
+  int _currentIndex = 0; // Default to Bronze
   final CarouselSliderController _carouselController = CarouselSliderController();
   final TextEditingController _customAmountController = TextEditingController();
 
@@ -30,14 +30,14 @@ class _PackageSelectionScreenState extends State<PackageSelectionScreen> {
       packageId: 'pkg_bronze',
       name: 'Bronze',
       price: 100.0,
-      duration: 120, // minutes
+      duration: 60, // 1 hour
       reelsCount: 2,
       editingStyle: 'standard',
       deliveryTime: 120,
       highlightVideo: false,
       liveReelStation: false,
       features: const [
-        '2 hours on‑site coverage',
+        '1 hour on‑site coverage',
         'Up to 2 reels',
         'Basic color correction',
       ],
@@ -45,8 +45,8 @@ class _PackageSelectionScreenState extends State<PackageSelectionScreen> {
     sp.PackageOffering(
       packageId: 'pkg_silver',
       name: 'Silver',
-      price: 300.0,
-      duration: 180,
+      price: 250.0,
+      duration: 180, // 3 hours
       reelsCount: 4,
       editingStyle: 'modern',
       deliveryTime: 90,
@@ -62,14 +62,14 @@ class _PackageSelectionScreenState extends State<PackageSelectionScreen> {
       packageId: 'pkg_gold',
       name: 'Gold',
       price: 500.0,
-      duration: 240,
+      duration: 360, // 6 hours
       reelsCount: 6,
       editingStyle: 'cinematic',
       deliveryTime: 60,
       highlightVideo: true,
       liveReelStation: true,
       features: const [
-        '4 hours on‑site coverage',
+        '6 hours on‑site coverage',
         'Up to 6 reels',
         'Cinematic color grading',
         'Highlight montage',
@@ -177,9 +177,16 @@ class _PackageSelectionScreenState extends State<PackageSelectionScreen> {
                         height: 500,
                         viewportFraction: 0.88,
                         initialPage: safeIndex,
-                        enableInfiniteScroll: false,
+                        enableInfiniteScroll: packages.length > 1,
+                        autoPlay: packages.length > 1,
+                        autoPlayInterval: const Duration(seconds: 4),
+                        autoPlayAnimationDuration: const Duration(milliseconds: 700),
+                        autoPlayCurve: Curves.easeInOut,
+                        pauseAutoPlayOnTouch: true,
+                        pauseAutoPlayOnManualNavigate: true,
                         enlargeCenterPage: true,
                         enlargeFactor: 0.15,
+                        scrollPhysics: const BouncingScrollPhysics(),
                         onPageChanged: (index, reason) {
                           setState(() {
                             _currentIndex = index;

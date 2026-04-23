@@ -30,7 +30,8 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   /// After showing the offer popup, suppress again for this long.
   static const Duration _homePromoCooldown = Duration(days: 7);
   static const String _kOfferLastShownMs = 'home_offer_last_shown_ms';
@@ -94,6 +95,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkOfferPopup();
     // Get location first, then load saved city as fallback
     _getCurrentLocation();
@@ -105,8 +107,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _trendingScrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshHomeContent();
+    }
+  }
+
+  Future<void> _refreshHomeContent() async {
+    await Future.wait([
+      _loadHomeBanners(),
+      _loadPromoPopupOffer(),
+      _loadTrendingReels(),
+      _loadFeaturedProviders(),
+      _loadNearbyVenues(),
+      _loadCityReviews(),
+    ]);
   }
 
   Future<void> _loadPromoPopupOffer() async {
@@ -523,7 +544,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           const Positioned.fill(child: PremiumHomeBackground()),
           SafeArea(
-            child: CustomScrollView(
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: _refreshHomeContent,
+              child: CustomScrollView(
           slivers: [
             // Header Section - Clean & Simplified
             SliverToBoxAdapter(
@@ -562,36 +586,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              // Compact City Selector
-                              Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () => _showCityPicker(),
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: GlassSurfaceCard(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                    blurSigma: 8,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.location_on_rounded,
-                                          size: 16,
-                                          color: AppColors.primary,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Icon(
-                                          Icons.keyboard_arrow_down_rounded,
-                                          size: 16,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                              // Location icon (non-interactive)
+                              GlassSurfaceCard(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                blurSigma: 8,
+                                child: Icon(
+                                  Icons.location_on_rounded,
+                                  size: 16,
+                                  color: AppColors.primary,
                                 ),
                               ),
                             ],
@@ -694,6 +700,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       const SizedBox(height: 14),
                       CarouselSlider(
+                        key: ValueKey<String>(
+                          _bannerItems
+                              .map((b) => '${b['text'] ?? ''}|${b['imageUrl'] ?? ''}')
+                              .join('||'),
+                        ),
                         items: (_bannerItems.isNotEmpty
                             ? _bannerItems
                                 .map(
@@ -1052,6 +1063,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
+            ),
             ),
           ),
           if (_showOfferPopup)

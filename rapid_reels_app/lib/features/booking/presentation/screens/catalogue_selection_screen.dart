@@ -32,6 +32,37 @@ class CatalogueSelectionScreen extends StatelessWidget {
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
   }
 
+  bool _shouldFallbackToNoOfferState(Object? error) {
+    if (error == null) return false;
+    final text = error.toString().toLowerCase();
+    return text.contains('permission-denied') ||
+        text.contains('insufficient permissions') ||
+        text.contains('cloud_firestore/permission-denied');
+  }
+
+  Widget _buildNoOfferState(BuildContext context, String message) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.inventory_2_outlined, size: 56, color: AppColors.textSecondary),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.textSecondary, height: 1.4),
+          ),
+          const SizedBox(height: 24),
+          CustomButton(
+            text: 'Continue with selected package',
+            onPressed: () => _skipToPackageFlow(context),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final eventType = bookingData['eventType'] as String?;
@@ -47,35 +78,23 @@ class CatalogueSelectionScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator(color: AppColors.primary));
           }
           if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('Could not load offerings: ${snapshot.error}'),
-              ),
+            if (_shouldFallbackToNoOfferState(snapshot.error)) {
+              return _buildNoOfferState(
+                context,
+                'No offer package available right now. You can continue with your selected package.',
+              );
+            }
+            return _buildNoOfferState(
+              context,
+              'No offer package available right now. Please continue with your selected package.',
             );
           }
           final filtered = _filterForFlow(snapshot.data ?? [], eventType);
 
           if (filtered.isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.inventory_2_outlined, size: 56, color: AppColors.textSecondary),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'This provider has no published catalogue entries for your event type yet. You can continue with their standard packages.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textSecondary, height: 1.4),
-                  ),
-                  const SizedBox(height: 24),
-                  CustomButton(
-                    text: 'Continue with selected package',
-                    onPressed: () => _skipToPackageFlow(context),
-                  ),
-                ],
-              ),
+            return _buildNoOfferState(
+              context,
+              'No offer package available for this provider yet. You can continue with your selected package.',
             );
           }
 

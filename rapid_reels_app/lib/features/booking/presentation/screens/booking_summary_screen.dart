@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/booking/date_availability.dart';
 import '../../../../core/config/stripe_config.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
@@ -31,7 +30,6 @@ class BookingSummaryScreen extends StatefulWidget {
 }
 
 class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
-  static const double _testStripeChargeAmount = 2.0;
   bool _acceptedTerms = false;
   bool _isProcessing = false;
   final _firestoreService = FirestoreService();
@@ -495,14 +493,9 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                       isTotal: true,
                     ),
                     _buildDetailRow(
-                      'Payable Now',
+                      'Total Payment',
                       _formatMoney(payableAmount, currency),
-                      subtitle: 'One-time payment',
-                    ),
-                    _buildDetailRow(
-                      'Test Charge (Stripe)',
-                      _formatMoney(_testStripeChargeAmount, currency),
-                      subtitle: 'Temporary test override',
+                      subtitle: 'Full amount due now',
                     ),
                   ]),
 
@@ -524,18 +517,30 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                           activeColor: AppColors.primary,
                         ),
                         Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(
-                              () => _acceptedTerms = !_acceptedTerms,
-                            ),
-                            child: const Padding(
-                              padding: EdgeInsets.only(top: 12),
-                              child: Text(
-                                'I agree to the Terms & Conditions and Cancellation Policy',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textSecondary,
-                                  height: 1.4,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: GestureDetector(
+                              onTap: () => _showTermsDialog(),
+                              child: RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                    height: 1.4,
+                                  ),
+                                  children: [
+                                    const TextSpan(text: 'I agree to the '),
+                                    TextSpan(
+                                      text: 'Terms & Conditions',
+                                      style: TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w600,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                    const TextSpan(
+                                        text: ' and Cancellation Policy'),
+                                  ],
                                 ),
                               ),
                             ),
@@ -565,7 +570,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
             child: SafeArea(
               top: false,
               child: CustomButton(
-                text: 'Pay $currencySymbol${_formatAmount(_testStripeChargeAmount, currency)} & Confirm',
+                text: 'Pay $currencySymbol${_formatAmount(payableAmount, currency)} & Confirm',
                 onPressed: !_isProcessing ? _handleConfirmBooking : null,
                 isLoading: _isProcessing,
                 icon: Icons.payment,
@@ -575,6 +580,130 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
         ],
       ),
     ),
+    );
+  }
+
+  void _showTermsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.gavel_rounded, color: AppColors.primary, size: 22),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Terms & Conditions',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Rapid Reels — Booking Terms & Conditions (United Kingdom)',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 14),
+              _termItem(
+                '1. Contract Formation',
+                'A legally binding contract is formed between you and Rapid Reels when your booking is confirmed and payment is received. By proceeding, you agree to these terms in accordance with the Consumer Rights Act 2015.',
+                AppColors.primary,
+              ),
+              _termItem(
+                '2. Right to Cancel (Consumer Contracts Regulations 2013)',
+                'As this is a service booked for a specific date and time, your statutory 14-day cooling-off right does not apply once the service has commenced or where you have expressly requested the service begin before the cooling-off period expires.',
+                AppColors.primary,
+              ),
+              _termItem(
+                '3. Cancellation by You',
+                'If you wish to cancel your booking, you must notify us in writing via the app support. Cancellations made more than 72 hours before the event may be eligible for a partial refund at our discretion. Cancellations within 72 hours of the event are non-refundable.',
+                AppColors.primary,
+              ),
+              _termItem(
+                '4. Cancellation by Rapid Reels',
+                'In the unlikely event that we are unable to fulfil your booking, you will receive a full refund within 14 days or we will offer a suitable replacement at no extra cost, in line with the Consumer Rights Act 2015.',
+                AppColors.primary,
+              ),
+              _termItem(
+                '5. Service Quality',
+                'All services are provided with reasonable care and skill as required under the Consumer Rights Act 2015. If you believe the service was not delivered to a satisfactory standard, you must notify us within 48 hours of the event.',
+                AppColors.primary,
+              ),
+              _termItem(
+                '6. Payment & Pricing',
+                'All prices are inclusive of VAT where applicable. Payment is processed securely. You authorise Rapid Reels to charge the agreed amount to your selected payment method upon booking confirmation.',
+                AppColors.primary,
+              ),
+              _termItem(
+                '7. Liability',
+                'Rapid Reels\' liability is limited to the value of the booking. We are not liable for indirect or consequential losses. Nothing in these terms affects your statutory rights under UK consumer law.',
+                AppColors.primary,
+              ),
+              _termItem(
+                '8. Governing Law',
+                'These terms are governed by the laws of England and Wales. Any disputes shall be subject to the exclusive jurisdiction of the courts of England and Wales.',
+                AppColors.primary,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() => _acceptedTerms = true);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('I Agree & Accept'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _termItem(String title, String body, Color titleColor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: titleColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            body,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -668,8 +797,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
     required double configuredAdvance,
     required double totalAmount,
   }) {
-    if (configuredAdvance > 0) return configuredAdvance;
-    return totalAmount * 0.5;
+    return totalAmount;
   }
 
   Future<void> _handleConfirmBooking() async {
@@ -799,35 +927,6 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
         );
         return;
       }
-      final fbProvider = await _firestoreService.getProvider(providerId);
-      if (fbProvider == null) {
-        if (!mounted) return;
-        setState(() => _isProcessing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Provider not found.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-      final occupied =
-          await _firestoreService.getProviderOccupiedDateKeys(providerId);
-      if (!isDateAvailableForProvider(fbProvider, ev, occupied)) {
-        if (!mounted) return;
-        setState(() => _isProcessing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'This date is no longer available for the selected provider. '
-              'Pick another date from the provider screen.',
-            ),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 6),
-          ),
-        );
-        return;
-      }
 
       bookingData['paymentCurrency'] = currency;
       bookingData['totalAmount'] = effectiveTotal;
@@ -862,7 +961,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
           'bookingId': bookingId,
           'paymentId': paymentIntent.paymentIntentId,
           'amount': payableAmount,
-          'chargedAmount': _testStripeChargeAmount,
+          'chargedAmount': payableAmount,
         },
       );
     } on BookingDateTakenException catch (e) {
@@ -895,10 +994,21 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
       context.pushReplacement(
         AppRoutes.paymentFailure,
         extra: {
-          'message': 'Failed to confirm payment: ${e.toString()}',
+          'message': _friendlyPaymentFailureMessage(e),
           'bookingData': widget.bookingData,
         },
       );
     }
+  }
+
+  String _friendlyPaymentFailureMessage(Object error) {
+    final raw = error.toString();
+    final lower = raw.toLowerCase();
+    if (lower.contains('permission-denied') ||
+        lower.contains('permission denied')) {
+      return 'Payment could not be confirmed due to access restrictions. '
+          'Please retry in a moment.';
+    }
+    return 'Failed to confirm payment: $raw';
   }
 }

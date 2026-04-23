@@ -93,10 +93,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       setState(() => _isLoading = false);
 
       if (success && mounted) {
-        // Navigate to city selection screen
         Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) {
-            context.go(AppRoutes.citySelection);
+            context.go(AppRoutes.home);
           }
         });
       } else {

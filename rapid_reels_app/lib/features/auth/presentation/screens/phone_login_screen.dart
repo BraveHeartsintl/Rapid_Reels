@@ -202,21 +202,27 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 60),
+                const SizedBox(height: 40),
 
-                // Logo/Icon
+                // Logo
                 Center(
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: const Icon(
-                      Icons.play_circle_filled,
-                      size: 60,
-                      color: Colors.white,
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 130,
+                    height: 130,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        gradient: AppColors.primaryGradient,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: const Icon(
+                        Icons.play_circle_filled,
+                        size: 60,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),

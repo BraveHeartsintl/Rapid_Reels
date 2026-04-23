@@ -16,8 +16,9 @@ class ProviderRegistrationScreen extends StatefulWidget {
 
 class _ProviderRegistrationScreenState extends State<ProviderRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _businessNameController = TextEditingController();
-  final _ownerNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -30,10 +31,15 @@ class _ProviderRegistrationScreenState extends State<ProviderRegistrationScreen>
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirestoreService _firestoreService = FirestoreService();
 
+  String _normalizeName(String value) {
+    return value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+  }
+
   @override
   void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _businessNameController.dispose();
-    _ownerNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
@@ -61,6 +67,7 @@ class _ProviderRegistrationScreenState extends State<ProviderRegistrationScreen>
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -82,30 +89,57 @@ class _ProviderRegistrationScreenState extends State<ProviderRegistrationScreen>
               ),
               const SizedBox(height: 32),
               
-              // Business Name
+              // First Name
               CustomTextField(
-                controller: _businessNameController,
-                label: 'Business Name',
-                hint: 'Enter your business name',
-                prefixIcon: Icons.business,
+                controller: _firstNameController,
+                label: 'First Name',
+                hint: 'Enter first name',
+                prefixIcon: Icons.person_outline,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter business name';
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter first name';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
-              
-              // Owner Name
+
+              // Last Name
               CustomTextField(
-                controller: _ownerNameController,
-                label: 'Owner Name',
-                hint: 'Enter owner name',
-                prefixIcon: Icons.person,
+                controller: _lastNameController,
+                label: 'Last Name',
+                hint: 'Enter last name',
+                prefixIcon: Icons.badge_outlined,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter owner name';
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter last name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Business Name
+              CustomTextField(
+                controller: _businessNameController,
+                label: 'App display name',
+                hint: 'it can\'t be your original name',
+                prefixIcon: Icons.business,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please choose your display name';
+                  }
+                  final displayName = _normalizeName(value);
+                  final firstName = _normalizeName(_firstNameController.text);
+                  final lastName = _normalizeName(_lastNameController.text);
+                  final fullName = _normalizeName(
+                    '${_firstNameController.text} ${_lastNameController.text}',
+                  );
+
+                  if (displayName == firstName ||
+                      displayName == lastName ||
+                      displayName == fullName) {
+                    return 'Display name cannot be your first, last, or full name';
                   }
                   return null;
                 },
@@ -135,7 +169,7 @@ class _ProviderRegistrationScreenState extends State<ProviderRegistrationScreen>
               CustomTextField(
                 controller: _phoneController,
                 label: 'Phone Number',
-                hint: '+91 98765 43210',
+                hint: '+44 1234567890',
                 prefixIcon: Icons.phone,
                 keyboardType: TextInputType.phone,
                 validator: (value) {
@@ -298,7 +332,9 @@ class _ProviderRegistrationScreenState extends State<ProviderRegistrationScreen>
       await _firestoreService.createProviderFromRegistration(
         providerId: user.uid,
         businessName: _businessNameController.text.trim(),
-        ownerName: _ownerNameController.text.trim(),
+        ownerName:
+            '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}'
+                .trim(),
         email: _emailController.text.trim(),
         phoneNumber: _phoneController.text.trim(),
       );

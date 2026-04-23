@@ -14,43 +14,7 @@ class CitySelectionScreen extends StatefulWidget {
 class _CitySelectionScreenState extends State<CitySelectionScreen> {
   String? _selectedCity;
 
-  final List<CityData> _cities = [
-    CityData(
-      name: 'Visakhapatnam',
-      displayName: 'Visakhap...',
-      imagePath: 'assets/images/cities/Visakhapatnam_transparent.png',
-    ),
-    CityData(
-      name: 'Mumbai',
-      displayName: 'Mumbai',
-      imagePath: 'assets/images/cities/Mumbai_transparent.png',
-    ),
-    CityData(
-      name: 'Hyderabad',
-      displayName: 'Hyderab...',
-      imagePath: 'assets/images/cities/Hyderabad_transparent.png',
-    ),
-    CityData(
-      name: 'Chennai',
-      displayName: 'Chennai',
-      imagePath: 'assets/images/cities/Chennai_transparent.png',
-    ),
-    CityData(
-      name: 'Bangalore',
-      displayName: 'Banglore',
-      imagePath: 'assets/images/cities/Bangalore_transparent.png',
-    ),
-    CityData(
-      name: 'Vijayawada',
-      displayName: 'Vijayawa...',
-      imagePath: 'assets/images/cities/Vijayawada_transparent.png',
-    ),
-    CityData(
-      name: 'Warangal',
-      displayName: 'Warangal',
-      imagePath: 'assets/images/cities/Warangal_transparent.png',
-    ),
-  ];
+  final List<CityData> _cities = [];
 
   Future<void> _onCitySelected(String cityName) async {
     setState(() {

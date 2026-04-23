@@ -173,7 +173,8 @@ class PackageCard extends StatelessWidget {
             // Content Section - Scrollable
             Expanded(
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+                // Keep card content static so horizontal drags are handled by the parent carousel.
+                physics: const NeverScrollableScrollPhysics(),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(

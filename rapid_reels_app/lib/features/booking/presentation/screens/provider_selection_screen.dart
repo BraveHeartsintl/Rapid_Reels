@@ -420,7 +420,7 @@ class _ProviderSelectionScreenState extends State<ProviderSelectionScreen> {
                     ),
                     _buildSortChip('Rating', 'rating', Icons.star),
                     const SizedBox(width: 8),
-                    _buildSortChip('Price', 'price', Icons.currency_rupee),
+                    _buildSortChip('Price', 'price', Icons.currency_pound),
                     const SizedBox(width: 8),
                     _buildSortChip('Distance', 'distance', Icons.near_me),
                   ],

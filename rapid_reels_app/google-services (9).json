@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "583858856130",
+    "project_id": "rapidreelnew-de86a",
+    "storage_bucket": "rapidreelnew-de86a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:583858856130:android:e97b44940bea547f1e5b5b",
+        "android_client_info": {
+          "package_name": "com.rapidreel.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "583858856130-007v3qk4qnmotpn44ti71r8sgp4qrp6v.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rapidreel.app",
+            "certificate_hash": "1134613deca89490fb6831481f26c0ff1926cc0a"
+          }
+        },
+        {
+          "client_id": "583858856130-po97lmlu5b9skscg0j5gti31kb0amb54.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAuzYnTH6DhyFewO57ITLXa2CJB7B1IX4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "583858856130-po97lmlu5b9skscg0j5gti31kb0amb54.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

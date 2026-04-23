@@ -48,16 +48,15 @@ class DefaultFirebaseOptions {
     storageBucket: 'rapidreelnew-de86a.firebasestorage.app',
   );
 
-  // iOS configuration — fill in values from your GoogleService-Info.plist
-  // after registering the iOS app in Firebase Console (project: rapidreelnew-de86a)
+  // iOS configuration (from GoogleService-Info.plist)
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_API_KEY',             // API_KEY from GoogleService-Info.plist
-    appId: 'REPLACE_WITH_APP_ID',               // GOOGLE_APP_ID from GoogleService-Info.plist
+    apiKey: 'AIzaSyAwXJoM2yPm6mVA6PGRqBk03T5sR2fFazc',
+    appId: '1:583858856130:ios:457d5d8468faf7b31e5b5b',
     messagingSenderId: '583858856130',
     projectId: 'rapidreelnew-de86a',
     storageBucket: 'rapidreelnew-de86a.firebasestorage.app',
-    iosClientId: 'REPLACE_WITH_CLIENT_ID',      // CLIENT_ID from GoogleService-Info.plist
-    iosBundleId: 'REPLACE_WITH_BUNDLE_ID',      // BUNDLE_ID from GoogleService-Info.plist
+    iosClientId: '583858856130-10533mk9j8ol308a2vfrtsofjjihtqgt.apps.googleusercontent.com',
+    iosBundleId: 'com.rapidreel.app',
   );
 
   // For now, desktop platforms reuse the web config.

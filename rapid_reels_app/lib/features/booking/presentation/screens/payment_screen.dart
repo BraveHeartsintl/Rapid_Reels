@@ -50,12 +50,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     }
   }
 
-  double get _paymentAmount {
-    if (widget.isAdvancePayment) {
-      return widget.booking.advanceAmount ?? widget.booking.totalAmount * 0.5;
-    }
-    return widget.booking.totalAmount;
-  }
+  double get _paymentAmount => widget.booking.totalAmount;
 
   @override
   Widget build(BuildContext context) {
@@ -104,23 +99,11 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                           'Total Amount',
                           '£${widget.booking.totalAmount.toStringAsFixed(2)}',
                         ),
-                        if (widget.isAdvancePayment) ...[
-                          _buildSummaryRow(
-                            'Advance (50%)',
-                            '£${_paymentAmount.toStringAsFixed(2)}',
-                            isHighlight: true,
-                          ),
-                          _buildSummaryRow(
-                            'Remaining',
-                            '£${(widget.booking.totalAmount - _paymentAmount).toStringAsFixed(2)}',
-                            isSubtle: true,
-                          ),
-                        ] else
-                          _buildSummaryRow(
-                            'Pay Now',
-                            '£${_paymentAmount.toStringAsFixed(2)}',
-                            isHighlight: true,
-                          ),
+                        _buildSummaryRow(
+                          'Total Payment',
+                          '£${_paymentAmount.toStringAsFixed(2)}',
+                          isHighlight: true,
+                        ),
                       ],
                     ),
                   ),

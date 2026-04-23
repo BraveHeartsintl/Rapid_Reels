@@ -12,15 +12,15 @@ class MockPackages {
     packageId: 'pkg_bronze',
     name: 'Bronze',
     price: 100,
-    duration: 120, // 2 hours
-    reelsCount: 1,
+    duration: 60, // 1 hour
+    reelsCount: 2,
     editingStyle: 'basic',
     deliveryTime: 120, // 2 hours
     highlightVideo: false,
     liveReelStation: false,
     features: [
-      '2-hour coverage',
-      '1 instant reel (30-60 sec)',
+      '1-hour coverage',
+      '2 instant reels',
       'Basic editing',
       'Delivered in 2 hours',
       'HD quality (1080p)',
@@ -31,16 +31,16 @@ class MockPackages {
   static final PackageOffering silver = PackageOffering(
     packageId: 'pkg_silver',
     name: 'Silver',
-    price: 300,
-    duration: 240, // 4 hours
-    reelsCount: 3,
+    price: 250,
+    duration: 180, // 3 hours
+    reelsCount: 4,
     editingStyle: 'standard',
     deliveryTime: 60, // 1 hour
     highlightVideo: false,
     liveReelStation: false,
     features: [
-      '4-hour coverage',
-      '3 instant reels',
+      '3-hour coverage',
+      '4 instant reels',
       'Standard editing with transitions',
       'Delivered in 1 hour',
       'HD quality (1080p)',
@@ -54,14 +54,14 @@ class MockPackages {
     name: 'Gold',
     price: 500,
     duration: 360, // 6 hours
-    reelsCount: 5,
+    reelsCount: 6,
     editingStyle: 'premium',
     deliveryTime: 30, // 30 minutes
     highlightVideo: true,
     liveReelStation: false,
     features: [
       '6-hour coverage',
-      '5 instant reels + 1 highlight video (2-3 min)',
+      '6 instant reels + 1 highlight video (2-3 min)',
       'Premium editing with effects',
       'Instant delivery',
       'Full edited video next day',

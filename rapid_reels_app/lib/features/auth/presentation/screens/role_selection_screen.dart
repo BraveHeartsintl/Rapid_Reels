@@ -205,6 +205,20 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Center(
+          child: Image.asset(
+            'assets/images/logo.png',
+            width: 110,
+            height: 110,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => const Icon(
+              Icons.play_circle_filled_rounded,
+              size: 64,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
         Row(
           children: [
             Container(

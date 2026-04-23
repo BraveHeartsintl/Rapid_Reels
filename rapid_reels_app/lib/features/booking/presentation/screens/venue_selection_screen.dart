@@ -9,10 +9,33 @@ import 'package:geocoding/geocoding.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../../core/firebase/models/firebase_provider_model.dart';
+import '../../../../core/firebase/services/firestore_service.dart';
+import '../../../../core/mock/mock_providers.dart';
 import '../../../../core/mock/mock_venues.dart';
 import '../../../../core/firebase/models/firebase_user_model.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../shared/widgets/custom_button.dart';
+
+class _ProviderMapItem {
+  final String id;
+  final String name;
+  final String address;
+  final String city;
+  final double latitude;
+  final double longitude;
+  final double? rating;
+
+  const _ProviderMapItem({
+    required this.id,
+    required this.name,
+    required this.address,
+    required this.city,
+    required this.latitude,
+    required this.longitude,
+    this.rating,
+  });
+}
 
 class VenueSelectionScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> bookingData;
@@ -27,6 +50,7 @@ class VenueSelectionScreen extends ConsumerStatefulWidget {
 }
 
 class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
+  final FirestoreService _firestoreService = FirestoreService();
   GoogleMapController? _mapController;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _manualVenueNameController = TextEditingController();
@@ -50,6 +74,9 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
   double _searchRadiusKm = 15.0; // Search radius in kilometers (increased to show all photography studios)
   String? _lastSyncedUserId;
   int _lastSyncedSavedAddressesCount = -1;
+  bool _isLoadingProviders = false;
+  List<_ProviderMapItem> _providerMapItems = [];
+  _ProviderMapItem? _selectedProvider;
 
   @override
   void initState() {
@@ -66,6 +93,7 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
 
     // Get location in background, don't block UI
     _getCurrentLocation();
+    _loadProvidersForMap();
     
     // Set timeout for map initialization
     Future.delayed(const Duration(seconds: 10), () {
@@ -157,6 +185,7 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
       _applySearchFilter(_searchController.text);
       _updateMarkers();
       _updateCircles();
+      _loadProvidersForMap();
     }
   }
 
@@ -212,6 +241,7 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
           _isLoadingLocation = false;
         });
         _refreshNearbyVenuesFromCurrentLocation();
+        _loadProvidersForMap();
 
         if (_mapController != null && _mapInitialized) {
           _moveCameraToLocation(_currentLocation);
@@ -222,6 +252,170 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
       debugPrint('Error getting location: $e');
       await _loadFallbackVenueFeed();
     }
+  }
+
+  bool _hasValidProviderCoords(double lat, double lng) {
+    return lat.abs() > 0.0001 || lng.abs() > 0.0001;
+  }
+
+  Future<void> _loadProvidersForMap() async {
+    if (!mounted) return;
+    setState(() => _isLoadingProviders = true);
+
+    try {
+      final firebaseProviders = await _firestoreService.getProviders(
+        isActive: true,
+        isVerified: true,
+        verificationStatus: 'approved',
+      );
+
+      var providers = firebaseProviders
+          .where(
+            (p) => _hasValidProviderCoords(
+              p.location.latitude,
+              p.location.longitude,
+            ),
+          )
+          .map(_mapFirebaseProviderToMapItem)
+          .toList();
+
+      if (providers.isEmpty) {
+        providers = MockProviders.allProviders
+            .where(
+              (p) =>
+                  p.isActive &&
+                  p.isVerified &&
+                  _hasValidProviderCoords(
+                    p.location.latitude,
+                    p.location.longitude,
+                  ),
+            )
+            .map(
+              (p) => _ProviderMapItem(
+                id: p.providerId,
+                name: p.businessName,
+                address: p.location.address,
+                city: p.location.city,
+                latitude: p.location.latitude,
+                longitude: p.location.longitude,
+                rating: p.rating,
+              ),
+            )
+            .toList();
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _providerMapItems = providers;
+        if (_selectedProvider != null) {
+          final matched = providers.where((p) => p.id == _selectedProvider!.id);
+          _selectedProvider = matched.isNotEmpty ? matched.first : null;
+        }
+        _isLoadingProviders = false;
+      });
+      _updateMarkers();
+      if (_mapController != null && _mapInitialized) {
+        _focusMapOnProviderCluster();
+      }
+    } catch (e) {
+      debugPrint('Error loading providers for map: $e');
+      if (!mounted) return;
+      setState(() => _isLoadingProviders = false);
+    }
+  }
+
+  _ProviderMapItem _mapFirebaseProviderToMapItem(FirebaseProviderModel provider) {
+    return _ProviderMapItem(
+      id: provider.providerId,
+      name: provider.businessName,
+      address: provider.location.address,
+      city: provider.location.city,
+      latitude: provider.location.latitude,
+      longitude: provider.location.longitude,
+      rating: provider.rating,
+    );
+  }
+
+  Future<void> _focusMapOnProviderCluster() async {
+    if (_mapController == null || _providerMapItems.isEmpty) return;
+    if (_providerMapItems.length == 1) {
+      final p = _providerMapItems.first;
+      _moveCameraToLocation(LatLng(p.latitude, p.longitude));
+      return;
+    }
+
+    var minLat = _currentLocation.latitude;
+    var maxLat = _currentLocation.latitude;
+    var minLng = _currentLocation.longitude;
+    var maxLng = _currentLocation.longitude;
+
+    for (final provider in _providerMapItems) {
+      if (provider.latitude < minLat) minLat = provider.latitude;
+      if (provider.latitude > maxLat) maxLat = provider.latitude;
+      if (provider.longitude < minLng) minLng = provider.longitude;
+      if (provider.longitude > maxLng) maxLng = provider.longitude;
+    }
+
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+
+    await _mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(bounds, 72),
+    );
+  }
+
+  void _showProviderBottomSheet(_ProviderMapItem provider) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  provider.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  provider.address.isNotEmpty ? provider.address : provider.city,
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+                if (provider.rating != null) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, size: 16, color: Colors.amber),
+                      const SizedBox(width: 4),
+                      Text(
+                        provider.rating!.toStringAsFixed(1),
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _syncVenuesFromProfile({
@@ -315,39 +509,33 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
       ),
     );
 
-    // Add venue markers with improved styling
-    for (var venue in _nearbyVenues) {
-      final isSelected = _selectedVenue?.venueId == venue.venueId;
+    // Add provider markers (Airbnb-like map browsing)
+    for (final provider in _providerMapItems) {
+      final isSelected = _selectedProvider?.id == provider.id;
       markers.add(
         Marker(
-          markerId: MarkerId(venue.venueId),
-          position: LatLng(venue.latitude, venue.longitude),
+          markerId: MarkerId('provider_${provider.id}'),
+          position: LatLng(provider.latitude, provider.longitude),
           icon: BitmapDescriptor.defaultMarkerWithHue(
-            isSelected 
-                ? BitmapDescriptor.hueRed 
-                : (venue.venueType == 'photography' 
-                    ? BitmapDescriptor.hueViolet 
-                    : BitmapDescriptor.hueGreen),
+            isSelected ? BitmapDescriptor.hueRed : BitmapDescriptor.hueViolet,
           ),
           infoWindow: InfoWindow(
-            title: venue.name,
-            snippet: venue.address,
+            title: provider.name,
+            snippet: provider.city,
           ),
           anchor: const Offset(0.5, 1.0),
           onTap: () {
-            // Show bottom sheet with vendor details
-            _showVendorBottomSheet(venue);
-            // Also select the venue
             setState(() {
-              _selectedVenue = venue;
-              // Clear manual entry when venue is selected
+              _selectedProvider = provider;
+              _selectedVenue = null;
               _manualVenueNameController.clear();
               _manualVenueAddressController.clear();
               _manualVenueLocation = null;
               _showManualEntry = false;
             });
+            _showProviderBottomSheet(provider);
             _updateMarkers();
-            _moveCameraToLocation(LatLng(venue.latitude, venue.longitude));
+            _moveCameraToLocation(LatLng(provider.latitude, provider.longitude));
           },
         ),
       );
@@ -748,10 +936,14 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
         });
       }
       
-        // Wait a bit for map to fully initialize
-        await Future.delayed(const Duration(milliseconds: 500));
+      // Wait a bit for map to fully initialize
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (_providerMapItems.isNotEmpty) {
+        await _focusMapOnProviderCluster();
+      } else {
         _moveCameraToLocation(_currentLocation);
-        _updateCircles();
+      }
+      _updateCircles();
     } catch (e) {
       debugPrint('Error initializing map: $e');
       if (mounted) {
@@ -766,6 +958,7 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
   void _onMapTap(LatLng location) {
     // When user taps on map, clear selection and set manual location
     setState(() {
+      _selectedProvider = null;
       _selectedVenue = null;
       _manualVenueLocation = location;
       _showManualEntry = true;
@@ -776,6 +969,7 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
 
   void _selectVenue(Venue venue) {
     setState(() {
+      _selectedProvider = null;
       _selectedVenue = venue;
       // Clear manual entry when venue is selected
       _manualVenueNameController.clear();
@@ -850,14 +1044,23 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
               maxLines: 2,
             ),
             const SizedBox(height: 10),
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Providers will be filtered by this address location.',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                _isLoadingProviders
+                    ? 'Loading providers on map...'
+                    : 'Showing ${_providerMapItems.length} providers on map near your location.',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 12),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: _buildMapView(),
+              ),
+            ),
+            const SizedBox(height: 12),
             SafeArea(
               top: false,
               child: CustomButton(
@@ -966,6 +1169,62 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
                 _updateMarkers();
               },
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedProviderInfoCard(_ProviderMapItem provider) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            const Icon(Icons.videocam, color: AppColors.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    provider.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    provider.city,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (provider.rating != null)
+              Row(
+                children: [
+                  const Icon(Icons.star, size: 14, color: Colors.amber),
+                  const SizedBox(width: 2),
+                  Text(
+                    provider.rating!.toStringAsFixed(1),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -1278,13 +1537,12 @@ class _VenueSelectionScreenState extends ConsumerState<VenueSelectionScreen> {
             debugPrint('Camera idle');
           },
         ),
-        // Selected Venue Info Card
-        if (_selectedVenue != null)
+        if (_selectedProvider != null)
           Positioned(
             top: 16,
             left: 16,
             right: 16,
-            child: _buildVenueInfoCard(_selectedVenue!),
+            child: _buildSelectedProviderInfoCard(_selectedProvider!),
           ),
         // Loading overlay (if still loading)
         if (_isMapLoading)
