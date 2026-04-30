@@ -7,6 +7,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../../../core/constants/app_cities.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -86,6 +88,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   static const double _trendingCardWidth = 140;
   static const double _trendingCardRightMargin = 12;
   static const double _trendingListHorizontalPad = 20;
+  static final RegExp _placeholderOfferTextPattern = RegExp(
+    r'\b(test|dummy|sample|vaild|valid)\b',
+    caseSensitive: false,
+  );
 
   /// Minimum rating for nearby + featured provider strips; `null` = no floor.
   double? _providerRatingMin = 3.5;
@@ -115,11 +121,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _getCurrentLocation();
       _refreshHomeContent();
     }
   }
 
   Future<void> _refreshHomeContent() async {
+    await _getCurrentLocation();
     await Future.wait([
       _loadHomeBanners(),
       _loadPromoPopupOffer(),
@@ -152,6 +160,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       return '£${d.amount!.toStringAsFixed(0)} off your booking';
     }
     return 'Limited-time offer';
+  }
+
+  String _offerHeadline(FirebaseOfferModel? offer) {
+    final title = (offer?.title ?? '').trim();
+    final description = (offer?.description ?? '').trim();
+    final combined = '$title $description'.trim();
+    if (combined.isEmpty || _placeholderOfferTextPattern.hasMatch(combined)) {
+      return 'Todays offer available';
+    }
+    return title.isNotEmpty ? title : 'Todays offer available';
+  }
+
+  String _offerDescription(FirebaseOfferModel? offer) {
+    final description = (offer?.description ?? '').trim();
+    if (description.isEmpty || _placeholderOfferTextPattern.hasMatch(description)) {
+      return '';
+    }
+    return description;
   }
 
   Future<void> _loadTrendingReels() async {
@@ -190,9 +216,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       final mapped = <Map<String, String>>[];
       for (var i = 0; i < top.length; i++) {
         final offer = top[i];
-        final desc = (offer.description ?? '').trim();
-        final text =
-            desc.isNotEmpty ? '${offer.title}\n$desc' : offer.title;
+        final text = _offerHeadline(offer);
         mapped.add({
           'text': text,
           'imageUrl': (offer.imageUrl ?? '').trim().isNotEmpty
@@ -269,10 +293,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
       // Get current position
       debugPrint('Getting current position...');
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
-      );
+      Position? position;
+      try {
+        const locationSettings = LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 20),
+        );
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: locationSettings,
+        );
+      } catch (e) {
+        debugPrint('Error getting fresh position, trying last known: $e');
+        position = await Geolocator.getLastKnownPosition();
+      }
+
+      if (position == null) {
+        _handleLocationError('Unable to detect location. Using fallback city.');
+        return;
+      }
 
       if (mounted) {
         debugPrint('Location obtained: ${position.latitude}, ${position.longitude}');
@@ -298,24 +336,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       );
 
       if (placemarks.isNotEmpty) {
-        final placemark = placemarks.first;
-        String? cityName = placemark.locality ?? 
-                          placemark.subAdministrativeArea ?? 
-                          placemark.administrativeArea ??
-                          placemark.name;
-        
-        // If city name is available, use it; otherwise try to find a better match
+        String? cityName;
+        for (final placemark in placemarks) {
+          final candidates = <String?>[
+            placemark.locality,
+            placemark.subAdministrativeArea,
+            placemark.administrativeArea,
+            placemark.name,
+          ];
+          for (final candidate in candidates) {
+            final value = candidate?.trim();
+            if (value != null && value.isNotEmpty) {
+              cityName = value;
+              break;
+            }
+          }
+          if (cityName != null) break;
+        }
+
+        // If city name is available, use it; otherwise try fallback city.
         if (cityName != null && cityName.isNotEmpty) {
-          // Clean up city name (remove extra spaces, etc.)
-          cityName = cityName.trim();
-          
           // Check if it matches any of our known cities
-          String? matchedCity = _findMatchingCity(cityName);
-          
+          final matchedCity = _findMatchingCity(cityName);
           final finalCityName = matchedCity ?? cityName;
-          
+
           debugPrint('Detected city: $finalCityName');
-          
+
           if (mounted && finalCityName.isNotEmpty) {
             setState(() {
               _selectedCity = finalCityName;
@@ -333,11 +379,83 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         }
       } else {
         debugPrint('No placemarks found');
+        final fallbackCity = await _reverseGeocodeWithNominatim(
+          latitude: latitude,
+          longitude: longitude,
+        );
+        if (fallbackCity != null && fallbackCity.isNotEmpty && mounted) {
+          setState(() {
+            _selectedCity = fallbackCity;
+          });
+          _loadFeaturedProviders();
+          _loadNearbyVenues();
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('selected_city', fallbackCity);
+          await prefs.setDouble('last_latitude', latitude);
+          await prefs.setDouble('last_longitude', longitude);
+          return;
+        }
         _loadFallbackCity();
       }
     } catch (e) {
       debugPrint('Error reverse geocoding: $e');
+      final fallbackCity = await _reverseGeocodeWithNominatim(
+        latitude: latitude,
+        longitude: longitude,
+      );
+      if (fallbackCity != null && fallbackCity.isNotEmpty && mounted) {
+        setState(() {
+          _selectedCity = fallbackCity;
+        });
+        _loadFeaturedProviders();
+        _loadNearbyVenues();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('selected_city', fallbackCity);
+        await prefs.setDouble('last_latitude', latitude);
+        await prefs.setDouble('last_longitude', longitude);
+        return;
+      }
       _loadFallbackCity();
+    }
+  }
+
+  Future<String?> _reverseGeocodeWithNominatim({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=$latitude&lon=$longitude',
+      );
+      final response = await http.get(
+        uri,
+        headers: const {
+          // Required by Nominatim usage policy.
+          'User-Agent': 'RapidReelsApp/1.0 (mobile app reverse geocoding)',
+        },
+      );
+      if (response.statusCode != 200) return null;
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return null;
+      final address = decoded['address'];
+      if (address is! Map<String, dynamic>) return null;
+
+      final cityCandidate =
+          address['city'] ??
+          address['town'] ??
+          address['village'] ??
+          address['county'] ??
+          address['state_district'] ??
+          address['state'];
+
+      if (cityCandidate is String && cityCandidate.trim().isNotEmpty) {
+        return cityCandidate.trim();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Nominatim reverse geocode failed: $e');
+      return null;
     }
   }
 
@@ -395,7 +513,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     setState(() => _isLoadingProviders = true);
     try {
       final city = _selectedCity;
-      final effectiveCity = (city == 'Detecting...' || city.startsWith('Detecting'))
+      final effectiveCity =
+          (city == 'Detecting...' ||
+              city.startsWith('Detecting') ||
+              city == 'Current location unavailable')
           ? null
           : city;
       var list = await _firestoreService.getFeaturedProviders(city: effectiveCity);
@@ -422,7 +543,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Future<void> _loadCityReviews() async {
     if (!mounted) return;
     final city = _selectedCity.trim();
-    if (city.isEmpty || city == 'Detecting...' || city.startsWith('Detecting')) {
+    if (city.isEmpty ||
+        city == 'Detecting...' ||
+        city.startsWith('Detecting') ||
+        city == 'Current location unavailable') {
       return;
     }
 
@@ -507,7 +631,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     try {
       final city = _selectedCity;
       // Avoid querying with placeholder text
-      final effectiveCity = (city == 'Detecting...' || city.startsWith('Detecting'))
+      final effectiveCity =
+          (city == 'Detecting...' ||
+              city.startsWith('Detecting') ||
+              city == 'Current location unavailable')
           ? null
           : city;
 
@@ -793,13 +920,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 4),
                           ),
-                          child: Text(
-                            AppStrings.viewAll,
-                            style: AppTypography.labelMedium.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                            ),
-                          ),
+                          child: _buildGradientViewAllText(),
                         ),
                       ],
                     ),
@@ -853,13 +974,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               style: TextButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               ),
-                              child: Text(
-                                AppStrings.viewAll,
-                                style: AppTypography.labelMedium.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primary,
-                                ),
-                              ),
+                              child: _buildGradientViewAllText(),
                             ),
                         ],
                       ),
@@ -950,13 +1065,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           ),
-                          child: Text(
-                            AppStrings.viewAll,
-                            style: AppTypography.labelMedium.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                            ),
-                          ),
+                          child: _buildGradientViewAllText(),
                         ),
                       ],
                     ),
@@ -1863,17 +1972,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _ratingChoiceChip(String label, double? value) {
     final selected = _providerRatingMin == value;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (bool next) {
-        if (!next) return;
-        _onProviderRatingFilterChanged(value);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _onProviderRatingFilterChanged(value),
+        borderRadius: BorderRadius.circular(24),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: selected ? AppColors.primaryGradient : null,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: selected
+                  ? Colors.transparent
+                  : AppColors.secondary.withValues(alpha: 0.8),
+              width: 1.4,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                const Icon(Icons.check, size: 15, color: AppColors.textPrimary),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGradientViewAllText() {
+    return ShaderMask(
+      shaderCallback: (bounds) {
+        final width = bounds.width == 0 ? 56.0 : bounds.width;
+        final height = bounds.height == 0 ? 18.0 : bounds.height;
+        return AppColors.primaryGradient.createShader(
+          Rect.fromLTWH(0, 0, width, height),
+        );
       },
-      selectedColor: AppColors.primary.withValues(alpha: 0.35),
-      labelStyle: TextStyle(
-        color: selected ? AppColors.textPrimary : AppColors.textSecondary,
-        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+      blendMode: BlendMode.srcIn,
+      child: Text(
+        AppStrings.viewAll,
+        style: AppTypography.labelMedium.copyWith(
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -2016,7 +2170,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         {
           'rating': 4.5,
           'review': 'The partner team was incredibly professional and punctual. They made the entire shoot smooth and stress-free.',
-          'reviewerName': 'Sai Ram',
+          'reviewerName': 'John',
           'reviewerRole': 'Brand Event',
           'reviewerImage': 'https://i.pravatar.cc/150?img=12',
         },
@@ -2358,7 +2512,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: Column(
           children: [
             Text(
-              'Serving $city with\nInstant Reels',
+              'Serving $city with\nRapidReel',
               textAlign: TextAlign.center,
               style: AppTypography.headlineSmall.copyWith(
                 color: AppColors.textPrimary.withValues(alpha: 0.75),
@@ -2407,7 +2561,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   size: 18,
                 ),
                 Text(
-                  ' in India',
+                  ' in London',
                   style: AppTypography.bodyMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -2433,13 +2587,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildOfferPopup() {
     final offer = _promoPopupOffer;
     final imageUrl = (offer?.imageUrl ?? '').trim();
-    final title = offer?.title.trim().isNotEmpty == true
-        ? offer!.title
-        : 'Special offer';
+    final title = _offerHeadline(offer);
     final subtitle = offer != null
         ? _promoDiscountLine(offer)
         : 'Get 20% off on your first booking';
-    final desc = (offer?.description ?? '').trim();
+    final desc = _offerDescription(offer);
     final code = (offer?.code ?? 'FLASH20').trim();
 
     return GestureDetector(

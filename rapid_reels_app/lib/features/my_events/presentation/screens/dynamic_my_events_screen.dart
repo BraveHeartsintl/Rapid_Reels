@@ -194,23 +194,39 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
             
             return Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: FilterChip(
-                label: Text(
-                  filter.toUpperCase(),
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _selectedFilter = filter;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(24),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: isSelected ? AppColors.primaryGradient : null,
+                      color: isSelected ? null : AppColors.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: isSelected
+                            ? Colors.transparent
+                            : AppColors.secondary.withValues(alpha: 0.8),
+                        width: 1.4,
+                      ),
+                    ),
+                    child: Text(
+                      filter.toUpperCase(),
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    _selectedFilter = filter;
-                  });
-                },
-                backgroundColor: AppColors.surface,
-                selectedColor: AppColors.primary,
-                checkmarkColor: AppColors.textPrimary,
               ),
             );
           },

@@ -498,6 +498,11 @@ class _EventDetailsFormScreenState extends State<EventDetailsFormScreen> {
               onPrimary: AppColors.onPrimary,
               onSurface: AppColors.textPrimary,
             ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.secondary,
+              ),
+            ),
           ),
           child: child!,
         );
@@ -522,6 +527,11 @@ class _EventDetailsFormScreenState extends State<EventDetailsFormScreen> {
               surface: AppColors.surface,
               onPrimary: AppColors.onPrimary,
               onSurface: AppColors.textPrimary,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.secondary,
+              ),
             ),
           ),
           child: child!,

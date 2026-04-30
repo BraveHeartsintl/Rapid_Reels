@@ -185,7 +185,7 @@ class ProviderGradientButton extends StatelessWidget {
   }
 }
 
-/// Green “accept / success” CTA (same shape as [ProviderGradientButton], semantic success color).
+/// Success CTA with same glossy gradient finish for consistency.
 class ProviderSuccessButton extends StatelessWidget {
   const ProviderSuccessButton({
     super.key,
@@ -214,53 +214,87 @@ class ProviderSuccessButton extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(borderRadius),
-            color: onPressed != null
-                ? ProviderAppColors.success
-                : ProviderAppColors.surfaceElevated,
+            gradient: onPressed != null ? ProviderAppColors.primaryGradient : null,
+            color: onPressed != null ? null : ProviderAppColors.surfaceElevated,
             boxShadow: onPressed != null
                 ? [
                     BoxShadow(
-                      color: ProviderAppColors.success.withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: ProviderAppColors.primary.withValues(alpha: 0.35),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
                     ),
                   ]
                 : null,
           ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minWidth: fullWidth ? double.infinity : 0,
-              minHeight: minHeight,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Center(
-                child: Row(
-                  mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (icon != null) ...[
-                      IconTheme.merge(
-                        data: const IconThemeData(
-                          color: ProviderAppColors.onPrimary,
-                          size: 20,
-                        ),
-                        child: icon!,
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Text(
-                      label,
-                      style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: ProviderAppColors.onPrimary,
+          child: Stack(
+            fit: StackFit.passthrough,
+            children: [
+              if (onPressed != null)
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: AppColors.primaryGlossOverlay,
                       ),
                     ),
-                  ],
+                  ),
+                ),
+              if (onPressed != null)
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: AppColors.primaryGlossBloomOverlay,
+                      ),
+                    ),
+                  ),
+                ),
+              if (onPressed != null)
+                const Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: AppColors.primaryMetallicStreakOverlay,
+                      ),
+                    ),
+                  ),
+                ),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: fullWidth ? double.infinity : 0,
+                  minHeight: minHeight,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (icon != null) ...[
+                          IconTheme.merge(
+                            data: const IconThemeData(
+                              color: ProviderAppColors.onPrimary,
+                              size: 20,
+                            ),
+                            child: icon!,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          label,
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: ProviderAppColors.onPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),

@@ -40,11 +40,21 @@ class AuthRepository {
       'FORCE_RECAPTCHA_FLOW',
       defaultValue: false,
     );
+    const forceRecaptchaInRelease = bool.fromEnvironment(
+      'FORCE_RECAPTCHA_IN_RELEASE',
+      defaultValue: true,
+    );
 
     try {
-      // Keep production on default Firebase behavior: Play Integrity first,
-      // then reCAPTCHA fallback when required.
-      if (kDebugMode && forceRecaptchaForTesting) {
+      final shouldForceRecaptcha =
+          !kIsWeb &&
+          defaultTargetPlatform == TargetPlatform.android &&
+          (forceRecaptchaForTesting ||
+              (kReleaseMode && forceRecaptchaInRelease));
+
+      // In Android release, force reCAPTCHA to avoid device/Play Integrity
+      // verification issues seen in production OTP flows.
+      if (shouldForceRecaptcha) {
         await _firebaseAuth.setSettings(
           forceRecaptchaFlow: true,
         );
@@ -108,6 +118,21 @@ class AuthRepository {
   // Helper method for user-friendly error messages
   String _getFriendlyError(FirebaseAuthException e) {
     final errorMessage = e.message?.toLowerCase() ?? '';
+
+    if (kIsWeb) {
+      if (errorMessage.contains('recaptcha') ||
+          errorMessage.contains('app verification') ||
+          errorMessage.contains('invalid app credential') ||
+          e.code == 'captcha-check-failed' ||
+          e.code == 'missing-client-identifier' ||
+          e.code == 'invalid-app-credential') {
+        return 'Web OTP verification failed. Please ensure:\n'
+            '1. Firebase Auth -> Settings -> Authorized domains includes localhost\n'
+            '2. Phone sign-in method is enabled in Firebase Console\n'
+            '3. Complete reCAPTCHA and allow popups/third-party cookies in Chrome\n'
+            '4. If just updated settings, wait 5-10 minutes and reload the page';
+      }
+    }
     
     // Check for Play Integrity / reCAPTCHA errors
     if (errorMessage.contains('play integrity') || 
@@ -235,6 +260,15 @@ class AuthRepository {
   // Google Sign-In
   Future<UserCredential> signInWithGoogle() async {
     try {
+      if (kIsWeb) {
+        final provider = GoogleAuthProvider();
+        final userCredential = await _firebaseAuth.signInWithPopup(provider);
+        if (userCredential.user != null) {
+          await _ensureUserDocument(userCredential.user!);
+        }
+        return userCredential;
+      }
+
       await _initializeGoogleSignInIfNeeded();
       final googleUser = await _googleSignIn.authenticate();
 
@@ -290,7 +324,15 @@ class AuthRepository {
 
   Future<void> _initializeGoogleSignInIfNeeded() async {
     if (_googleSignInInitialized) return;
-    await _googleSignIn.initialize();
+    try {
+      await _googleSignIn.initialize();
+    } on StateError catch (e) {
+      // GoogleSignIn is a shared singleton; another flow may have already
+      // initialized it in this app session.
+      if (!e.toString().contains('init() has already been called')) {
+        rethrow;
+      }
+    }
     _googleSignInInitialized = true;
   }
 

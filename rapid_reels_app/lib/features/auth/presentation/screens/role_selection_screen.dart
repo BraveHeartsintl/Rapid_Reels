@@ -418,7 +418,7 @@ class _RoleCard extends StatelessWidget {
                                     style: GoogleFonts.poppins(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      color: accent,
+                                      color: Colors.blue,
                                     ),
                                   ),
                                   const SizedBox(width: 6),

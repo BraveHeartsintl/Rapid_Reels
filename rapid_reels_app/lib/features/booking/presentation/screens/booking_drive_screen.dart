@@ -9,7 +9,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../../core/firebase/models/firebase_booking_model.dart';
 import '../../../../core/firebase/models/firebase_booking_drive_model.dart';
+import '../../../../core/firebase/models/firebase_reel_model.dart';
 import '../../../../core/firebase/services/firestore_service.dart';
 import '../../../../shared/widgets/firebase_storage_image.dart';
 
@@ -35,11 +37,33 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
   final _firestore = FirestoreService();
   final _storage = FirebaseStorage.instance;
   final _picker = ImagePicker();
+  static const Set<String> _imageExtensions = <String>{
+    'jpg',
+    'jpeg',
+    'png',
+    'gif',
+    'webp',
+    'bmp',
+    'heic',
+    'heif',
+  };
+  static const Set<String> _videoExtensions = <String>{
+    'mp4',
+    'mov',
+    'm4v',
+    'webm',
+    'mkv',
+    'avi',
+    '3gp',
+    'mpeg',
+    'mpg',
+  };
   BookingDriveFolderType _selectedFolder = BookingDriveFolderType.original;
   bool _gridView = true;
   bool _uploading = false;
   bool _creatingShareLink = false;
   final Map<String, Future<String>> _urlCache = <String, Future<String>>{};
+  FirebaseBookingModel? _bookingCache;
 
   @override
   void initState() {
@@ -108,18 +132,23 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
         final storagePath =
             '${_folderStoragePrefix(_selectedFolder)}/${millis}_$safeName';
         final storageRef = _storage.ref(storagePath);
+        final inferredContentType = _guessContentType(file.name);
+        final metadata = SettableMetadata(contentType: inferredContentType);
 
         UploadTask uploadTask;
         if (kIsWeb) {
           final bytes = await file.readAsBytes();
-          uploadTask = storageRef.putData(bytes);
+          uploadTask = storageRef.putData(bytes, metadata);
         } else {
-          uploadTask = storageRef.putFile(File(file.path));
+          uploadTask = storageRef.putFile(File(file.path), metadata);
         }
         final result = await uploadTask;
         final downloadUrl = await result.ref.getDownloadURL();
+        final metadataContentType = result.metadata?.contentType;
         final contentType =
-            result.metadata?.contentType ?? 'application/octet-stream';
+            (metadataContentType != null && metadataContentType.isNotEmpty)
+            ? metadataContentType
+            : inferredContentType;
         final size = result.metadata?.size ?? 0;
         final model = FirebaseBookingDriveFileModel(
           fileId: '',
@@ -136,6 +165,10 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
           isDeleted: false,
         );
         await _firestore.upsertBookingDriveFile(model);
+        await _maybeCreateReelFromUploadedVideo(
+          uploadedFile: model,
+          fallbackContentType: inferredContentType,
+        );
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -610,7 +643,7 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
     FirebaseBookingDriveFileModel file, {
     required double size,
   }) {
-    if (file.mimeType.startsWith('image/')) {
+    if (_isImageFile(file)) {
       return FutureBuilder<String>(
         future: _resolveDownloadUrl(file),
         builder: (context, snapshot) {
@@ -651,12 +684,12 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(_iconForMime(file.mimeType), size: size * 0.55),
+      child: Icon(_iconForFile(file), size: size * 0.55),
     );
   }
 
   Widget _buildPreviewContent(FirebaseBookingDriveFileModel file) {
-    if (file.mimeType.startsWith('image/')) {
+    if (_isImageFile(file)) {
       return FutureBuilder<String>(
         future: _resolveDownloadUrl(file),
         builder: (context, snapshot) {
@@ -686,7 +719,7 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
       );
     }
 
-    if (file.mimeType.startsWith('video/')) {
+    if (_isVideoFile(file)) {
       return FutureBuilder<String>(
         future: _resolveDownloadUrl(file),
         builder: (context, snapshot) {
@@ -705,7 +738,7 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
       children: [
         Row(
           children: [
-            Icon(_iconForMime(file.mimeType)),
+            Icon(_iconForFile(file)),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -726,6 +759,118 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
         ),
       ],
     );
+  }
+
+  String _guessContentType(String fileName) {
+    final ext = _extractExtension(fileName);
+    if (ext == null) return 'application/octet-stream';
+    if (_imageExtensions.contains(ext)) {
+      if (ext == 'jpg') return 'image/jpeg';
+      return 'image/$ext';
+    }
+    if (_videoExtensions.contains(ext)) {
+      if (ext == 'mpg' || ext == 'mpeg') return 'video/mpeg';
+      if (ext == '3gp') return 'video/3gpp';
+      return 'video/$ext';
+    }
+    return 'application/octet-stream';
+  }
+
+  Future<FirebaseBookingModel?> _loadBooking() async {
+    _bookingCache ??= await _firestore.getBooking(widget.bookingId);
+    return _bookingCache;
+  }
+
+  Future<void> _maybeCreateReelFromUploadedVideo({
+    required FirebaseBookingDriveFileModel uploadedFile,
+    required String fallbackContentType,
+  }) async {
+    final effectiveContentType = uploadedFile.mimeType.isNotEmpty
+        ? uploadedFile.mimeType
+        : fallbackContentType;
+    final looksLikeVideo = effectiveContentType.toLowerCase().startsWith(
+      'video/',
+    );
+    if (!looksLikeVideo) return;
+
+    try {
+      final booking = await _loadBooking();
+      if (booking == null) return;
+      final format = _bestKnownExtension(uploadedFile);
+      final reel = FirebaseReelModel(
+        reelId: '',
+        bookingId: widget.bookingId,
+        customerId: booking.customerId,
+        providerId: booking.providerId,
+        eventType: booking.eventType,
+        eventName: booking.eventName,
+        title: uploadedFile.fileName,
+        description: 'Auto-created from edited deliverable upload',
+        videoUrl: uploadedFile.downloadUrl,
+        thumbnailUrl: uploadedFile.thumbnailUrl ?? '',
+        duration: 0,
+        status: 'published',
+        metadata: ReelMetadata(
+          editingStyle: 'standard',
+          quality: '1080p',
+          fileSize: uploadedFile.sizeBytes,
+          format: format,
+        ),
+        analytics: ReelAnalytics(),
+        isPublic: true,
+        isFeatured: false,
+        createdAt: DateTime.now(),
+        deliveredAt: DateTime.now(),
+        publishedAt: DateTime.now(),
+      );
+      await _firestore.createReel(reel);
+      debugPrint(
+        'BookingDrive: auto-created reel from upload ${uploadedFile.fileName}',
+      );
+    } catch (e) {
+      // Reel creation is best-effort and should not block file uploads.
+      debugPrint('BookingDrive: reel auto-create failed: $e');
+    }
+  }
+
+  bool _isImageFile(FirebaseBookingDriveFileModel file) {
+    if (file.mimeType.toLowerCase().startsWith('image/')) return true;
+    final ext = _bestKnownExtension(file);
+    return ext != null && _imageExtensions.contains(ext);
+  }
+
+  bool _isVideoFile(FirebaseBookingDriveFileModel file) {
+    if (file.mimeType.toLowerCase().startsWith('video/')) return true;
+    final ext = _bestKnownExtension(file);
+    return ext != null && _videoExtensions.contains(ext);
+  }
+
+  String? _bestKnownExtension(FirebaseBookingDriveFileModel file) {
+    return _extractExtension(file.fileName) ??
+        _extractExtension(file.storagePath) ??
+        _extractExtension(file.downloadUrl);
+  }
+
+  String? _extractExtension(String source) {
+    if (source.isEmpty) return null;
+    final withoutQuery = source.split('?').first;
+    String decoded = withoutQuery;
+    try {
+      decoded = Uri.decodeFull(withoutQuery);
+    } catch (_) {
+      decoded = withoutQuery;
+    }
+    final dotIndex = decoded.lastIndexOf('.');
+    if (dotIndex == -1 || dotIndex == decoded.length - 1) {
+      return null;
+    }
+    return decoded.substring(dotIndex + 1).toLowerCase();
+  }
+
+  IconData _iconForFile(FirebaseBookingDriveFileModel file) {
+    if (_isImageFile(file)) return Icons.image;
+    if (_isVideoFile(file)) return Icons.videocam;
+    return _iconForMime(file.mimeType);
   }
 }
 

@@ -15,6 +15,7 @@ class CustomButton extends StatelessWidget {
   final double borderRadius;
   final Color? color;
   final Color? textColor;
+  final Gradient? gradient;
 
   const CustomButton({
     super.key,
@@ -29,6 +30,7 @@ class CustomButton extends StatelessWidget {
     this.borderRadius = 16,
     this.color,
     this.textColor,
+    this.gradient,
   });
 
   @override
@@ -48,16 +50,17 @@ class CustomButton extends StatelessWidget {
           child: Ink(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(borderRadius),
-              gradient: color == null
-                  ? AppColors.primaryGradient
-                  : LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [color!, color!],
-                    ),
+              gradient: gradient ??
+                  (color == null
+                      ? AppColors.primaryGradient
+                      : LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [color!, color!],
+                        )),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.28),
+                  color: (color ?? AppColors.primary).withValues(alpha: 0.28),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
@@ -82,6 +85,15 @@ class CustomButton extends StatelessWidget {
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: AppColors.primaryGlossBloomOverlay,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: AppColors.primaryTopEdgeGlossOverlay,
                         ),
                       ),
                     ),

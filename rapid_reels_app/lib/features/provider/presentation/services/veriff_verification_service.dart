@@ -8,8 +8,14 @@ import '../../../../core/firebase/services/firestore_service.dart';
 
 class VeriffStartResult {
   final String userMessage;
+  final Status status;
+  final bool shouldCollectDbsCertificate;
 
-  const VeriffStartResult(this.userMessage);
+  const VeriffStartResult({
+    required this.userMessage,
+    required this.status,
+    this.shouldCollectDbsCertificate = false,
+  });
 }
 
 class VeriffVerificationService {
@@ -61,14 +67,19 @@ class VeriffVerificationService {
           'metadata.veriff.audit.updatedBy': 'provider_app',
         });
         return const VeriffStartResult(
-          'Verification submitted. Final decision will update shortly.',
+          userMessage: 'Verification submitted. Final decision will update shortly.',
+          status: Status.done,
+          shouldCollectDbsCertificate: true,
         );
       case Status.canceled:
         await _firestoreService.updateProvider(providerId, {
           'metadata.veriff.status': 'abandoned',
           'metadata.veriff.audit.updatedBy': 'provider_app',
         });
-        return const VeriffStartResult('Verification canceled.');
+        return const VeriffStartResult(
+          userMessage: 'Verification canceled.',
+          status: Status.canceled,
+        );
       case Status.error:
         await _firestoreService.updateProvider(providerId, {
           'metadata.veriff.status': 'error',
@@ -76,7 +87,9 @@ class VeriffVerificationService {
           'metadata.veriff.audit.updatedBy': 'provider_app',
         });
         return VeriffStartResult(
-          'Verification failed: ${result.error?.name ?? 'unknown error'}.',
+          userMessage:
+              'Verification failed: ${result.error?.name ?? 'unknown error'}.',
+          status: Status.error,
         );
     }
   }

@@ -131,7 +131,7 @@ class ProfileScreen extends ConsumerWidget {
                                 width: 32,
                                 height: 32,
                                 decoration: const BoxDecoration(
-                                  color: AppColors.primary,
+                                  gradient: AppColors.primaryGradient,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Center(
@@ -364,7 +364,9 @@ class ProfileScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28),
+          color == AppColors.primary
+              ? _gradientIcon(icon, size: 28)
+              : Icon(icon, color: color, size: 28),
           const SizedBox(height: 8),
           Text(
             value,
@@ -415,8 +417,11 @@ class ProfileScreen extends ConsumerWidget {
     required VoidCallback onTap,
     Color? textColor,
   }) {
+    final isDestructive = textColor == AppColors.error;
     return ListTile(
-      leading: Icon(icon, color: textColor ?? AppColors.primary),
+      leading: isDestructive
+          ? Icon(icon, color: AppColors.error)
+          : _gradientIcon(icon),
       title: Text(
         title,
         style: AppTypography.titleSmall.copyWith(
@@ -427,8 +432,24 @@ class ProfileScreen extends ConsumerWidget {
         subtitle,
         style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
       ),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: isDestructive
+          ? const Icon(Icons.chevron_right, color: AppColors.error)
+          : _gradientIcon(Icons.chevron_right),
       onTap: onTap,
+    );
+  }
+
+  Widget _gradientIcon(IconData icon, {double size = 24}) {
+    return ShaderMask(
+      shaderCallback: (bounds) {
+        final width = bounds.width == 0 ? size : bounds.width;
+        final height = bounds.height == 0 ? size : bounds.height;
+        return AppColors.primaryGradient.createShader(
+          Rect.fromLTWH(0, 0, width, height),
+        );
+      },
+      blendMode: BlendMode.srcIn,
+      child: Icon(icon, color: Colors.white, size: size),
     );
   }
 

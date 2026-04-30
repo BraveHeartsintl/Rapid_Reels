@@ -82,7 +82,7 @@ class RapidBottomNavBar extends StatelessWidget {
     String label,
   ) {
     final selected = currentIndex == index;
-    final color = selected ? AppColors.primary : AppColors.textSecondary;
+    final color = AppColors.textSecondary;
     return Expanded(
       child: Material(
         color: Colors.transparent,
@@ -94,29 +94,66 @@ class RapidBottomNavBar extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  selected ? activeIcon : icon,
-                  color: color,
-                  size: 26,
-                ),
+                selected
+                    ? _gradientForeground(
+                        Icon(
+                          activeIcon,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      )
+                    : Icon(
+                        icon,
+                        color: color,
+                        size: 26,
+                      ),
                 const SizedBox(height: 4),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: color,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 11,
-                    height: 1.1,
-                  ),
-                ),
+                selected
+                    ? _gradientForeground(
+                        Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            height: 1.1,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 11,
+                          height: 1.1,
+                        ),
+                      ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _gradientForeground(Widget child) {
+    return ShaderMask(
+      shaderCallback: (bounds) {
+        final width = bounds.width == 0 ? 1.0 : bounds.width;
+        final height = bounds.height == 0 ? 1.0 : bounds.height;
+        return AppColors.primaryGradient.createShader(
+          Rect.fromLTWH(0, 0, width, height),
+        );
+      },
+      blendMode: BlendMode.srcIn,
+      child: child,
     );
   }
 }

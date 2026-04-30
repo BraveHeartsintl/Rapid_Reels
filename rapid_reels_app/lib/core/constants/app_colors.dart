@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Wheel-tuned blue: body-forward (#2C849F) with softer shadow and glossy highlight.
+  // Exact requested gradient: #6A00FF -> #00D4FF.
   static const Color background = Color(0xFF141A1D);
-  static const Color primary = Color(0xFF2C849F);
-  static const Color secondary = Color(0xFFF3C759);
+  static const Color primary = Color(0xFF6A00FF);
+  static const Color secondary = Color(0xFF00D4FF);
   static const Color accent = Color(0xFF8D8E91);
-  static const Color primaryDark = Color(0xFF1A5E79);
-  /// Mid-tone for brushed-metal body between [primaryDark] and highlights.
-  static const Color primaryMid = Color(0xFF2F8FA8);
+  static const Color primaryDark = Color(0xFF4B00C8);
+  /// Mid-tone for metallic body between [primaryDark] and highlights.
+  static const Color primaryMid = Color(0xFF5240FF);
   /// Specular strip in metallic gradients (wheel rim highlight).
-  static const Color primarySpecular = Color(0xFF4CAAC0);
+  static const Color primarySpecular = Color(0xFF62E3FF);
 
   // Surfaces
   static const Color surface = Color(0xFF1D2529);
@@ -38,14 +38,14 @@ class AppColors {
   static const Color brand = Color(0xFFDDBA63);
   static const Color other = Color(0xFF8D8E91);
   
-  /// Top sheen for metallic blue surfaces.
+  /// Top sheen for metallic violet surfaces.
   static const LinearGradient primaryGlossOverlay = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
       Color(0x96FFFFFF),
-      Color(0x66D6EEF6),
-      Color(0x2AA8D3E1),
+      Color(0x66F2DDFF),
+      Color(0x2AD2A4FF),
       Color(0x00FFFFFF),
     ],
     stops: [0.0, 0.1, 0.32, 0.62],
@@ -57,8 +57,8 @@ class AppColors {
     radius: 1.1,
     colors: [
       Color(0x66FFFFFF),
-      Color(0x3DDCF1F8),
-      Color(0x129FCEDF),
+      Color(0x3DEFD8FF),
+      Color(0x12D09EFF),
       Color(0x00000000),
     ],
     stops: [0.0, 0.28, 0.54, 1.0],
@@ -70,7 +70,7 @@ class AppColors {
     end: Alignment.bottomCenter,
     colors: [
       Color(0xCCFFFFFF),
-      Color(0x59E6F5FA),
+      Color(0x59F0DAFF),
       Color(0x00FFFFFF),
     ],
     stops: [0.0, 0.08, 0.2],
@@ -82,46 +82,31 @@ class AppColors {
     end: Alignment(0.22, 1.0),
     colors: [
       Color(0x00FFFFFF),
-      Color(0x1AD0E9F2),
-      Color(0x36E7F7FE),
-      Color(0x16B8DFEB),
+      Color(0x1AEFC8FF),
+      Color(0x36FFD9FF),
+      Color(0x16D2B1FF),
       Color(0x00FFFFFF),
     ],
     stops: [0.0, 0.4, 0.52, 0.66, 1.0],
   );
 
-  // Multi-stop diagonal with alternating dark/light bands for metallic depth.
+  // Primary app gradient (exact match to requested image).
   static const LinearGradient primaryGradient = LinearGradient(
-    begin: Alignment(-0.92, -0.96),
-    end: Alignment(0.92, 0.96),
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
     colors: [
-      Color(0xFF123F54),
-      Color(0xFF1A5870),
-      Color(0xFF66BFD4),
-      Color(0xFF2A7F9C),
-      Color(0xFF206A83),
-      primaryDark,
-      Color(0xFF247895),
-      primary,
-      primaryMid,
-      Color(0xFF3698B1),
-      primarySpecular,
-      Color(0xFF61B7CB),
-      Color(0xFF4DA2B9),
-      Color(0xFF3A8AA4),
-      Color(0xFF2A6E8A),
+      Color(0xFF6A00FF),
+      Color(0xFF00D4FF),
     ],
-    stops: [0.0, 0.06, 0.13, 0.2, 0.28, 0.38, 0.48, 0.58, 0.67, 0.74, 0.82, 0.89, 0.95, 0.98, 1.0],
   );
 
   /// Softer metallic for chips / cards (less specular than [primaryGradient]).
   static const LinearGradient primarySoftGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
     colors: [
-      Color(0xFF1E6079),
-      primary,
-      Color(0xFF56AFC5),
+      Color(0xFF6A00FF),
+      Color(0xFF00D4FF),
     ],
   );
   
@@ -135,7 +120,7 @@ class AppColors {
 
   // Home premium layer tokens
   static const Color homeGlowCyan = primary;
-  static const Color homeGlowMagenta = Color(0xFFF3C759);
+  static const Color homeGlowMagenta = secondary;
   static const Color homeGlowLime = Color(0xFF8D8E91);
   static const Color homePatternLine = Color(0x22FFFFFF);
   static const Color homeVignette = Color(0xCC000000);

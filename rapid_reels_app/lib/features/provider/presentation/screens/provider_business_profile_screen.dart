@@ -9,6 +9,7 @@ import '../../../../core/constants/app_routes.dart';
 import '../../../../core/firebase/services/firestore_service.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
+import '../services/veriff_verification_service.dart';
 
 class ProviderBusinessProfileScreen extends StatefulWidget {
   const ProviderBusinessProfileScreen({super.key});
@@ -25,15 +26,22 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
   final _stateController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _teamSizeController = TextEditingController();
+  final _equipmentController = TextEditingController();
   
   String? _selectedProfileImage;
   List<String> _selectedCoverImages = [];
   List<String> _selectedEventTypes = [];
   List<String> _selectedEquipment = [];
+  String _equipmentDescription = '';
+  String _verificationStatus = 'not_started';
+  String? _dbsCertificateUrl;
   bool _isSaving = false;
+  bool _isStartingVerification = false;
+  bool _isUploadingDbs = false;
 
   final _auth = FirebaseAuth.instance;
   final _firestoreService = FirestoreService();
+  final _veriffService = VeriffVerificationService();
   final _picker = ImagePicker();
   
   final List<String> _availableEventTypes = [
@@ -42,12 +50,19 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
     'Engagement',
     'Corporate',
     'Brand',
+    'Other',
   ];
   final List<String> _availableEquipment = const [
     'Drone',
     'Camera',
     'iPhone',
+    'Android',
   ];
+  @override
+  void initState() {
+    super.initState();
+    _loadVerificationData();
+  }
 
   @override
   void dispose() {
@@ -57,6 +72,7 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
     _stateController.dispose();
     _pincodeController.dispose();
     _teamSizeController.dispose();
+    _equipmentController.dispose();
     super.dispose();
   }
 
@@ -72,7 +88,7 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
           onPressed: () => context.pop(),
         ),
         title: const Text(
-          'Business Profile',
+          'Profile',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),
@@ -84,7 +100,7 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Complete Your Business Profile',
+                'Complete Your Profile',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -220,19 +236,10 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
               // Bio
               CustomTextField(
                 controller: _bioController,
-                label: 'Business Bio',
+                label: 'Your Bio',
                 hint: 'Tell customers about your services and experience',
                 prefixIcon: Icons.description,
                 maxLines: 4,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter business bio';
-                  }
-                  if (value.length < 50) {
-                    return 'Bio must be at least 50 characters';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
               
@@ -271,6 +278,34 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
+              TextFormField(
+                controller: _equipmentController,
+                minLines: 2,
+                maxLines: 4,
+                onChanged: (value) => _equipmentDescription = value,
+                decoration: InputDecoration(
+                  hintText:
+                      'Type your equipment details/model info (e.g. iPhone 15 Pro, Canon R6, DJI Mini 4)',
+                  filled: true,
+                  fillColor: ProviderAppColors.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[700]!, width: 1),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[700]!, width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: ProviderAppColors.primary,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -298,16 +333,10 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
               // Address
               CustomTextField(
                 controller: _addressController,
-                label: 'Business Address',
-                hint: 'Enter your business address',
+                label: 'Address',
+                hint: 'Enter your address',
                 prefixIcon: Icons.location_on,
                 maxLines: 2,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter address';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
               
@@ -319,27 +348,15 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
                       label: 'City',
                       hint: 'City',
                       prefixIcon: Icons.location_city,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Required';
-                        }
-                        return null;
-                      },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: CustomTextField(
                       controller: _stateController,
-                      label: 'State',
-                      hint: 'State',
+                      label: 'Region',
+                      hint: 'Region',
                       prefixIcon: Icons.map,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Required';
-                        }
-                        return null;
-                      },
                     ),
                   ),
                 ],
@@ -348,13 +365,15 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
               
               CustomTextField(
                 controller: _pincodeController,
-                label: 'Pincode',
-                hint: 'Enter pincode',
+                label: 'Postcode',
+                hint: 'Enter postcode',
                 prefixIcon: Icons.pin,
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.text,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter pincode';
+                  final trimmed = value?.trim() ?? '';
+                  if (trimmed.isNotEmpty &&
+                      !RegExp(r'^[a-zA-Z0-9]+$').hasMatch(trimmed)) {
+                    return 'Postcode must be alphanumeric';
                   }
                   return null;
                 },
@@ -367,13 +386,94 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
                 hint: 'Number of team members',
                 prefixIcon: Icons.people,
                 keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter team size';
-                  }
-                  return null;
-                },
               ),
+              const SizedBox(height: 24),
+              const Text(
+                'Identity Verification',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: ProviderAppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[700]!, width: 1),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Status: ${_statusLabel(_verificationStatus)}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Upload one supported ID document in Veriff.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[300],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: _isStartingVerification
+                            ? null
+                            : _startIdentityVerification,
+                        child: _isStartingVerification
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(_canRetryVerification(_verificationStatus)
+                                  ? 'Retry verification'
+                                  : 'Start verification'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Upload DBS Certification',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _isUploadingDbs ? null : _uploadDbsCertificate,
+                      icon: _isUploadingDbs
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.upload_file),
+                      label: Text(
+                        _dbsCertificateUrl == null
+                            ? 'Upload DBS certification'
+                            : 'Replace DBS certification',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_dbsCertificateUrl != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'DBS certification uploaded',
+                  style: TextStyle(fontSize: 12, color: Colors.green[300]),
+                ),
+              ],
               const SizedBox(height: 32),
               
               CustomButton(
@@ -470,13 +570,6 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
       return;
     }
 
-    if (_selectedEventTypes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one event type')),
-      );
-      return;
-    }
-
     final user = _auth.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -488,11 +581,17 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
     setState(() => _isSaving = true);
 
     try {
-      final teamSize = int.tryParse(_teamSizeController.text.trim()) ?? 1;
+      final bio = _safeTrimmedText(_bioController);
+      final address = _safeTrimmedText(_addressController);
+      final city = _safeTrimmedText(_cityController);
+      final region = _safeTrimmedText(_stateController);
+      final pincode = _safeTrimmedText(_pincodeController);
+      final teamSizeText = _safeTrimmedText(_teamSizeController);
+      final teamSize = int.tryParse(teamSizeText) ?? 1;
+      final equipmentDescription = _safeTrim(_equipmentDescription);
       double latitude = 0.0;
       double longitude = 0.0;
-      final fullAddress =
-          '${_addressController.text.trim()}, ${_cityController.text.trim()}, ${_stateController.text.trim()}, ${_pincodeController.text.trim()}';
+      final fullAddress = '$address, $city, $region, $pincode';
       try {
         final locations = await locationFromAddress(fullAddress);
         if (locations.isNotEmpty) {
@@ -503,14 +602,14 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
         // Keep default coordinates; provider search has city fallback.
       }
 
-      await _firestoreService.updateProvider(user.uid, {
-        'bio': _bioController.text.trim(),
+      final providerUpdates = <String, dynamic>{
+        'bio': bio,
         'eventTypes': _selectedEventTypes.map((e) => e.toLowerCase()).toList(),
         'location': {
-          'address': _addressController.text.trim(),
-          'city': _cityController.text.trim(),
-          'state': _stateController.text.trim(),
-          'pincode': _pincodeController.text.trim(),
+          'address': address,
+          'city': city,
+          'state': region,
+          'pincode': pincode,
           'coordinates': {
             'latitude': latitude,
             'longitude': longitude,
@@ -518,7 +617,9 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
         },
         'teamSize': teamSize,
         'equipment': _selectedEquipment.map((e) => e.toLowerCase()).toList(),
-      });
+        'equipmentDescription': equipmentDescription,
+      };
+      await _firestoreService.updateProvider(user.uid, providerUpdates);
 
       if (!mounted) return;
       context.push(AppRoutes.providerPortfolioUpload);
@@ -533,5 +634,143 @@ class _ProviderBusinessProfileScreenState extends State<ProviderBusinessProfileS
       }
     }
   }
+
+  String _safeTrimmedText(TextEditingController? controller) {
+    final value = controller?.text;
+    return value is String ? value.trim() : '';
+  }
+
+  String _safeTrim(dynamic value) {
+    return value is String ? value.trim() : '';
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'session_created':
+        return 'Session created';
+      case 'in_progress':
+        return 'In progress';
+      case 'submitted':
+        return 'Submitted';
+      case 'approved':
+        return 'Approved';
+      case 'declined':
+        return 'Declined';
+      case 'resubmission_requested':
+        return 'Resubmission requested';
+      case 'expired':
+        return 'Expired';
+      case 'abandoned':
+        return 'Abandoned';
+      case 'error':
+        return 'Error';
+      default:
+        return 'Not started';
+    }
+  }
+
+  bool _canRetryVerification(String status) {
+    return status == 'declined' ||
+        status == 'resubmission_requested' ||
+        status == 'expired' ||
+        status == 'abandoned' ||
+        status == 'error';
+  }
+
+  Future<void> _loadVerificationData() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final provider = await _firestoreService.getProvider(uid);
+      if (!mounted || provider == null) return;
+      final metadata = provider.metadata;
+      String? dbsUrl;
+      if (metadata != null) {
+        final docs = metadata['documents'];
+        if (docs is Map<String, dynamic>) {
+          dbsUrl = docs['dbsCertificateUrl'] as String?;
+        } else if (docs is Map) {
+          final value = docs['dbsCertificateUrl'];
+          dbsUrl = value is String ? value : null;
+        }
+      }
+      setState(() {
+        _verificationStatus = provider.veriffStatus;
+        _dbsCertificateUrl = dbsUrl;
+      });
+    } catch (_) {
+      // Silent: screen is still usable without status preload.
+    }
+  }
+
+  Future<void> _startIdentityVerification() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    setState(() => _isStartingVerification = true);
+    try {
+      final result = await _veriffService.startProviderVerification(
+        providerId: uid,
+      );
+      if (!mounted) return;
+      setState(() {
+        _verificationStatus = result.status.name;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.userMessage)),
+      );
+      await _loadVerificationData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Verification start failed: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isStartingVerification = false);
+      }
+    }
+  }
+
+  Future<void> _uploadDbsCertificate() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+    );
+    if (picked == null) return;
+
+    setState(() => _isUploadingDbs = true);
+    try {
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('providers')
+          .child(uid)
+          .child('documents')
+          .child('dbs_certificate.jpg');
+      await ref.putData(await picked.readAsBytes());
+      final url = await ref.getDownloadURL();
+      await _firestoreService.updateProvider(uid, {
+        'metadata.documents.dbsCertificateUrl': url,
+        'metadata.documents.dbsCertificateUploadedAt':
+            DateTime.now().toIso8601String(),
+      });
+      if (!mounted) return;
+      setState(() => _dbsCertificateUrl = url);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('DBS certification uploaded successfully.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload DBS certification: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingDbs = false);
+      }
+    }
+  }
+
 }
 

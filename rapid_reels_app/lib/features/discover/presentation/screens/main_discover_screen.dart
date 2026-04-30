@@ -71,12 +71,18 @@ class _MainDiscoverScreenState extends ConsumerState<MainDiscoverScreen>
         eventType: _selectedEventType,
       );
       final providerIds = reels.map((r) => r.providerId).toSet().toList();
-      final providers = await Future.wait(
-        providerIds.map((id) => _firestoreService.getProvider(id)),
-      );
       final cache = <String, FirebaseProviderModel?>{};
-      for (var i = 0; i < providerIds.length; i++) {
-        cache[providerIds[i]] = providers[i];
+      for (final id in providerIds) {
+        if (id.isEmpty) continue;
+        try {
+          cache[id] = await _firestoreService.getProvider(id);
+        } catch (e) {
+          // Some provider docs may be inaccessible to this user; keep reel visible.
+          debugPrint(
+            'MainDiscoverScreen: provider lookup failed for $id: $e',
+          );
+          cache[id] = null;
+        }
       }
       if (mounted) {
         setState(() {
@@ -87,7 +93,13 @@ class _MainDiscoverScreenState extends ConsumerState<MainDiscoverScreen>
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      debugPrint('MainDiscoverScreen: failed to load reels: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load reels: $e')),
+        );
+      }
     }
   }
 

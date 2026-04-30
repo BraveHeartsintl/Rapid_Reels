@@ -22,7 +22,7 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  String _selectedCountryCode = '+91';
+  String _selectedCountryCode = '+44';
   int _rateLimitSeconds = 0;
   Timer? _rateLimitTimer;
 
@@ -65,6 +65,26 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
     final minutes = seconds ~/ 60;
     final secs = seconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+  }
+
+  String _friendlyGoogleError(Object error) {
+    String message = error.toString();
+    if (message.startsWith('Exception: ')) {
+      message = message.substring(11);
+    }
+    if (message.startsWith('FirebaseAuthException: ')) {
+      message = message.substring('FirebaseAuthException: '.length);
+    }
+    if (message.contains('sign_in_canceled')) {
+      return 'Google sign-in was canceled.';
+    }
+    if (message.contains('ApiException: 10')) {
+      return 'Google Sign-In is not configured correctly for this build. Please check SHA and OAuth client setup.';
+    }
+    if (message.contains('network') || message.contains('Network')) {
+      return 'Network issue while signing in with Google. Please try again.';
+    }
+    return message;
   }
 
   Future<void> _sendOTP() async {
@@ -154,8 +174,6 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
           .read(authNotifierProvider.notifier)
           .signInWithGoogle();
 
-      setState(() => _isLoading = false);
-
       if (success && mounted) {
         // Check if user profile exists
         final user = ref.read(currentUserProvider);
@@ -172,21 +190,31 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
         }
       } else {
         if (mounted) {
+          final authState = ref.read(authNotifierProvider);
+          String errorMessage = 'Google Sign-In failed';
+          authState.whenOrNull(
+            error: (error, _) {
+              errorMessage = _friendlyGoogleError(error);
+            },
+          );
           Helpers.showSnackBar(
             context,
-            'Google Sign-In failed',
+            errorMessage,
             isError: true,
           );
         }
       }
     } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
         Helpers.showSnackBar(
           context,
-          e.toString(),
+          _friendlyGoogleError(e),
           isError: true,
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -381,6 +409,10 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: _isLoading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.secondary,
+                      side: const BorderSide(color: AppColors.secondary),
+                    ),
                     icon: const Icon(Icons.g_mobiledata, size: 32),
                     label: const Text('Continue with Google'),
                   ),
@@ -399,6 +431,9 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                 const SizedBox(height: 24),
                 TextButton(
                   onPressed: () => context.go(AppRoutes.roleSelection),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.secondary,
+                  ),
                   child: const Text(
                     'Choose account type',
                     style: TextStyle(

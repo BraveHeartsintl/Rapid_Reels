@@ -70,8 +70,8 @@ class ProviderAccountScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           ProviderActionCard(
             icon: Icons.verified_outlined,
-            title: 'Verification',
-            subtitle: 'Documents and approval status',
+            title: 'Identity verification',
+            subtitle: 'Start verification and check approval status',
             onTap: () => context.push(AppRoutes.providerVerification),
           ),
           const SizedBox(height: 12),

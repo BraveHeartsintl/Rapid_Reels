@@ -73,6 +73,10 @@ function bookingShareDocRef(db, bookingId) {
   return db.collection("bookingShares").doc(String(bookingId));
 }
 
+function bookingShareTokenRef(db, token) {
+  return db.collection("bookingShareTokens").doc(String(token));
+}
+
 function buildShareLink(token) {
   const configuredBase = normalizeHost(process.env.SHARE_WEB_BASE_URL || "");
   if (configuredBase) {
@@ -188,23 +192,53 @@ async function getBookingShareContextOrThrow(token) {
     throw new HttpsError("invalid-argument", "Missing share token.");
   }
   const db = admin.firestore();
-  const shareSnap = await db.collection("bookingShares")
-      .where("token", "==", cleanedToken)
-      .limit(1)
-      .get();
-  if (shareSnap.empty) {
+  const tokenSnap = await bookingShareTokenRef(db, cleanedToken).get();
+  let bookingId = "";
+  if (tokenSnap.exists) {
+    const tokenData = tokenSnap.data() || {};
+    bookingId = String(tokenData.bookingId || "");
+  }
+
+  // Backward compatibility for links generated before token mapping existed.
+  if (!bookingId) {
+    const legacySnap = await db.collection("bookingShares")
+        .where("token", "==", cleanedToken)
+        .limit(1)
+        .get();
+    if (!legacySnap.empty) {
+      bookingId = String(legacySnap.docs[0].id || "");
+      if (bookingId) {
+        await bookingShareTokenRef(db, cleanedToken).set({
+          token: cleanedToken,
+          bookingId,
+          isActive: true,
+          migratedFromLegacyLookup: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+      }
+    }
+  }
+
+  if (!bookingId) {
     throw new HttpsError("not-found", "Share link is invalid.");
   }
-  const shareDoc = shareSnap.docs[0];
+  const shareDoc = await bookingShareDocRef(db, bookingId).get();
+  if (!shareDoc.exists) {
+    throw new HttpsError("not-found", "Share link is invalid.");
+  }
   const shareData = shareDoc.data() || {};
   if (shareData.isActive === false) {
     throw new HttpsError("permission-denied", "Share link is disabled.");
   }
-  const bookingId = String(shareData.bookingId || "");
-  if (!bookingId) {
+  const shareBookingId = String(shareData.bookingId || bookingId);
+  if (!shareBookingId) {
     throw new HttpsError("failed-precondition", "Share link is malformed.");
   }
-  return {db, shareDoc, shareData, bookingId};
+  if (String(shareData.token || "") !== cleanedToken) {
+    throw new HttpsError("permission-denied", "Share link is no longer active.");
+  }
+  return {db, shareDoc, shareData, bookingId: shareBookingId};
 }
 
 function pickPreviewUrl(file) {
@@ -474,11 +508,28 @@ exports.createOrGetBookingShareLink = onCall(async (request) => {
   let token = "";
   await db.runTransaction(async (tx) => {
     const shareSnap = await tx.get(shareRef);
-    if (shareSnap.exists) {
-      const existing = shareSnap.data() || {};
-      token = String(existing.token || "");
-      if (token) {
+    const existingToken = shareSnap.exists ?
+      String((shareSnap.data() || {}).token || "") :
+      "";
+
+    if (existingToken) {
+      const existingTokenRef = bookingShareTokenRef(db, existingToken);
+      const existingTokenSnap = await tx.get(existingTokenRef);
+      const mappedBookingId = existingTokenSnap.exists ?
+        String((existingTokenSnap.data() || {}).bookingId || "") :
+        "";
+      if (!mappedBookingId || mappedBookingId === bookingId) {
+        token = existingToken;
+        tx.set(existingTokenRef, {
+          token,
+          bookingId,
+          isActive: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
         tx.set(shareRef, {
+          token,
+          bookingId,
           isActive: true,
           includeOriginal: true,
           includeEdited: true,
@@ -487,22 +538,60 @@ exports.createOrGetBookingShareLink = onCall(async (request) => {
         }, {merge: true});
         return;
       }
+      // Token was mapped to a different booking; rotate token for safety.
     }
 
-    token = createShareToken();
+    const maxAttempts = 12;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const candidate = createShareToken();
+      const candidateRef = bookingShareTokenRef(db, candidate);
+      const candidateSnap = await tx.get(candidateRef);
+      if (candidateSnap.exists) continue;
+      token = candidate;
+      tx.set(candidateRef, {
+        token,
+        bookingId,
+        isActive: true,
+        createdBy: callerUid,
+        lastGeneratedBy: callerUid,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+      break;
+    }
+
+    if (!token) {
+      throw new HttpsError("internal", "Could not generate a unique share token.");
+    }
+
+    if (existingToken && existingToken !== token) {
+      const oldTokenRef = bookingShareTokenRef(db, existingToken);
+      const oldTokenSnap = await tx.get(oldTokenRef);
+      const oldMappedBookingId = oldTokenSnap.exists ?
+        String((oldTokenSnap.data() || {}).bookingId || "") :
+        "";
+      if (oldMappedBookingId === bookingId) {
+        tx.delete(oldTokenRef);
+      }
+    }
+
+    const existingData = shareSnap.exists ? (shareSnap.data() || {}) : {};
+    const createdBy = String(existingData.createdBy || callerUid);
+    const createdAt = existingData.createdAt || admin.firestore.FieldValue.serverTimestamp();
+
     tx.set(shareRef, {
       bookingId,
       token,
       isActive: true,
       includeOriginal: true,
       includeEdited: true,
-      createdBy: callerUid,
+      createdBy,
       lastGeneratedBy: callerUid,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      lastAccessedAt: null,
-      downloadCount: 0,
-      version: 1,
+      lastAccessedAt: existingData.lastAccessedAt || null,
+      downloadCount: Number(existingData.downloadCount || 0),
+      version: Number(existingData.version || 0) + 1,
     }, {merge: true});
   });
 

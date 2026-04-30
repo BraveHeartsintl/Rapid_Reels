@@ -1082,22 +1082,22 @@ class FirestoreService {
   }
 
   /// Get discover feed reels (public reels)
-  /// When eventType is provided, fetches all and filters in memory to avoid composite index.
+  /// Query includes public + status to satisfy Firestore security rules.
   Future<List<FirebaseReelModel>> getDiscoverReels({
     String? eventType,
     int limit = 20,
   }) async {
     try {
-      // Fetch isPublic reels; filter by status in memory to include both delivered and published
+      // Security rules allow public reads only for delivered/published reels.
       final query = _firestore
           .collection('reels')
           .where('isPublic', isEqualTo: true)
+          .where('status', whereIn: const ['delivered', 'published'])
           .limit(eventType != null ? 100 : limit * 2);
 
       final snapshot = await query.get();
       var reels = snapshot.docs
           .map((doc) => FirebaseReelModel.fromFirestore(doc))
-          .where((r) => r.status == 'delivered' || r.status == 'published')
           .toList();
       if (eventType != null) {
         reels = reels.where((r) => r.eventType == eventType).toList();

@@ -5,6 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/theme/text_styles.dart';
+import '../../../../shared/widgets/custom_button.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -431,34 +432,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Widget _buildNextButton() {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _nextPage,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.4),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Text(
-            'Get Started',
-            style: AppTypography.buttonLarge.copyWith(
-              color: Colors.white,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
+    return CustomButton(
+      text: 'Get Started',
+      onPressed: _nextPage,
+      borderRadius: 16,
+      height: 56,
     );
   }
 

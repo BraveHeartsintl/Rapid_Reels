@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/admin/admin_route_cache.dart';
 import '../../../../core/admin/static_admin_session_provider.dart';
 import '../../../../core/router/router_refresh_notifier.dart';
@@ -206,11 +207,47 @@ class _ProviderLoginScreenState extends ConsumerState<ProviderLoginScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
-    Helpers.showSnackBar(
-      context,
-      'Google Sign-In for providers is not available yet. Please use phone & password.',
-      isError: true,
-    );
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final success = await ref
+          .read(authNotifierProvider.notifier)
+          .signInWithGoogle();
+
+      if (success && mounted) {
+        final user = ref.read(currentUserProvider);
+        if (user != null) {
+          final profileExists = await ref
+              .read(authNotifierProvider.notifier)
+              .userProfileExists(user.uid);
+
+          if (profileExists) {
+            context.go(AppRoutes.home);
+          } else {
+            context.go(AppRoutes.profileSetup);
+          }
+        }
+      } else if (mounted) {
+        Helpers.showSnackBar(
+          context,
+          'Google Sign-In failed',
+          isError: true,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Helpers.showSnackBar(
+        context,
+        e.toString(),
+        isError: true,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Future<void> _forgotPassword() async {
