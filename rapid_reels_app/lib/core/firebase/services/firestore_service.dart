@@ -150,6 +150,7 @@ class FirestoreService {
     required String ownerName,
     required String email,
     required String phoneNumber,
+    bool marketingConsent = false,
   }) async {
     final now = DateTime.now();
     final model = FirebaseProviderModel(
@@ -192,7 +193,11 @@ class FirestoreService {
       rejectionReason: null,
       createdAt: now,
       updatedAt: now,
-      metadata: const {'source': 'registration_form'},
+      metadata: {
+        'source': 'registration_form',
+        'marketingConsent': marketingConsent,
+        'termsPrivacyAupAcceptedAt': DateTime.now().toIso8601String(),
+      },
     );
     await setProvider(model);
   }
@@ -1098,6 +1103,7 @@ class FirestoreService {
       final snapshot = await query.get();
       var reels = snapshot.docs
           .map((doc) => FirebaseReelModel.fromFirestore(doc))
+          .where((r) => r.isDiscoverApproved)
           .toList();
       if (eventType != null) {
         reels = reels.where((r) => r.eventType == eventType).toList();
@@ -1107,6 +1113,89 @@ class FirestoreService {
       return reels;
     } catch (e) {
       throw Exception('Error getting discover reels: $e');
+    }
+  }
+
+  /// Home featured reels curated by admin.
+  /// Only returns public + delivered/published reels marked as featured.
+  Future<List<FirebaseReelModel>> getFeaturedReels({
+    int limit = 4,
+  }) async {
+    try {
+      final query = _firestore
+          .collection('reels')
+          .where('isFeatured', isEqualTo: true)
+          .where('isPublic', isEqualTo: true)
+          .where('status', whereIn: const ['delivered', 'published']);
+
+      final snapshot = await query.get();
+      var reels = snapshot.docs
+          .map((doc) => FirebaseReelModel.fromFirestore(doc))
+          .where((r) => r.isDiscoverApproved)
+          .toList();
+      reels.sort(FirebaseReelModel.compareForTrending);
+      if (limit > 0) {
+        reels = reels.take(limit).toList();
+      }
+      return reels;
+    } catch (e) {
+      throw Exception('Error getting featured reels: $e');
+    }
+  }
+
+  /// Admin reels listing for moderation/curation.
+  Future<List<FirebaseReelModel>> getReelsForAdmin({int limit = 200}) async {
+    try {
+      final snapshot = await _firestore
+          .collection('reels')
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .get();
+      return snapshot.docs
+          .map((doc) => FirebaseReelModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      throw Exception('Error getting reels for admin: $e');
+    }
+  }
+
+  /// Admin: toggle reel featured flag for home feed curation.
+  /// Enforces [maxFeatured] active featured reels.
+  Future<void> setReelFeatured({
+    required String reelId,
+    required bool isFeatured,
+    int maxFeatured = 4,
+  }) async {
+    try {
+      final reelRef = _firestore.collection('reels').doc(reelId);
+      final reelSnap = await reelRef.get();
+      if (!reelSnap.exists) {
+        throw Exception('Reel not found');
+      }
+      final reelData = reelSnap.data() ?? <String, dynamic>{};
+      final currentlyFeatured = reelData['isFeatured'] == true;
+      if (currentlyFeatured == isFeatured) return;
+
+      if (isFeatured) {
+        final featuredQuery = await _firestore
+            .collection('reels')
+            .where('isFeatured', isEqualTo: true)
+            .where('isPublic', isEqualTo: true)
+            .where('status', whereIn: const ['delivered', 'published'])
+            .get();
+        if (featuredQuery.docs.length >= maxFeatured) {
+          throw Exception(
+            'Only $maxFeatured reels can be featured. Unfeature one first.',
+          );
+        }
+      }
+
+      await reelRef.update({
+        'isFeatured': isFeatured,
+        'updatedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      throw Exception('Error updating reel featured flag: $e');
     }
   }
 
@@ -1890,5 +1979,283 @@ class FirestoreService {
     } catch (e) {
       throw Exception('Error getting user support tickets: $e');
     }
+  }
+
+  // ==================== Content moderation (UGC) ====================
+
+  /// Submit a user report for objectionable reel/content (reviewed within 24h).
+  Future<void> submitContentReport({
+    required String reporterId,
+    required String reportType,
+    required String reelId,
+    required String reportedUserId,
+    required String reason,
+    String? details,
+  }) async {
+    try {
+      await _firestore.collection('content_reports').add({
+        'reporterId': reporterId,
+        'reportType': reportType,
+        'reelId': reelId,
+        'reportedUserId': reportedUserId,
+        'reason': reason,
+        'details': details,
+        'status': 'pending',
+        'createdAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      throw Exception('Error submitting content report: $e');
+    }
+  }
+
+  /// Block a user: hides their content locally and notifies admins via [content_reports].
+  Future<void> blockUser({
+    required String blockerId,
+    required String blockedUserId,
+    String? reelId,
+    String? reason,
+  }) async {
+    if (blockerId == blockedUserId) {
+      throw Exception('You cannot block yourself.');
+    }
+    try {
+      final batch = _firestore.batch();
+      final blockRef = _firestore
+          .collection('users')
+          .doc(blockerId)
+          .collection('blocked_users')
+          .doc(blockedUserId);
+      batch.set(blockRef, {
+        'blockedUserId': blockedUserId,
+        'createdAt': Timestamp.now(),
+      });
+
+      final reportRef = _firestore.collection('content_reports').doc();
+      batch.set(reportRef, {
+        'reporterId': blockerId,
+        'reportType': 'user_block',
+        'reelId': reelId ?? '',
+        'reportedUserId': blockedUserId,
+        'reason': reason ?? 'User blocked from feed',
+        'status': 'pending',
+        'createdAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+      });
+
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Error blocking user: $e');
+    }
+  }
+
+  /// IDs of users blocked by the current user (for feed filtering).
+  Future<Set<String>> getBlockedUserIds(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('blocked_users')
+          .get();
+      return snapshot.docs.map((d) => d.id).toSet();
+    } catch (e) {
+      throw Exception('Error loading blocked users: $e');
+    }
+  }
+
+  /// Admin: pending content reports and user blocks.
+  Future<List<Map<String, dynamic>>> getPendingContentReports({
+    int limit = 100,
+  }) async {
+    try {
+      final snapshot = await _firestore
+          .collection('content_reports')
+          .where('status', isEqualTo: 'pending')
+          .limit(limit)
+          .get();
+      final list = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {'id': doc.id, ...data};
+      }).toList();
+      list.sort((a, b) {
+        final ta = a['createdAt'];
+        final tb = b['createdAt'];
+        if (ta is Timestamp && tb is Timestamp) {
+          return tb.compareTo(ta);
+        }
+        return 0;
+      });
+      return list;
+    } catch (e) {
+      throw Exception('Error loading content reports: $e');
+    }
+  }
+
+  Future<void> resolveContentReport({
+    required String reportId,
+    required String status,
+    String? adminNote,
+  }) async {
+    try {
+      await _firestore.collection('content_reports').doc(reportId).update({
+        'status': status,
+        'adminNote': adminNote,
+        'resolvedAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      throw Exception('Error resolving content report: $e');
+    }
+  }
+
+  /// Admin: unpublish reel after moderation action.
+  Future<void> unpublishReelForModeration(String reelId) async {
+    try {
+      await _firestore.collection('reels').doc(reelId).update({
+        'isPublic': false,
+        'moderationStatus': 'rejected',
+        'status': 'archived',
+        'updatedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      throw Exception('Error unpublishing reel: $e');
+    }
+  }
+
+  /// Admin: approve reel for public discover feed.
+  Future<void> approveReelForModeration(String reelId) async {
+    try {
+      await _firestore.collection('reels').doc(reelId).update({
+        'moderationStatus': 'approved',
+        'isPublic': true,
+        'status': 'published',
+        'publishedAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      throw Exception('Error approving reel: $e');
+    }
+  }
+
+  /// Admin: reels awaiting review before appearing in discover.
+  Future<List<FirebaseReelModel>> getReelsPendingModeration({
+    int limit = 100,
+  }) async {
+    try {
+      final snapshot = await _firestore
+          .collection('reels')
+          .orderBy('createdAt', descending: true)
+          .limit(limit * 3)
+          .get();
+      return snapshot.docs
+          .map((doc) => FirebaseReelModel.fromFirestore(doc))
+          .where((r) => r.moderationStatus == 'pending_review')
+          .take(limit)
+          .toList();
+    } catch (e) {
+      throw Exception('Error loading pending reels: $e');
+    }
+  }
+
+  /// Admin: suspend abusive user, unpublish their public reels (24h UGC SLA).
+  Future<void> suspendUserForModeration({
+    required String userId,
+    required String reason,
+  }) async {
+    if (userId.isEmpty) {
+      throw Exception('Invalid user id');
+    }
+    try {
+      final batch = _firestore.batch();
+      final userRef = _firestore.collection('users').doc(userId);
+      batch.set(
+        userRef,
+        {
+          'accountStatus': 'suspended',
+          'suspensionReason': reason,
+          'suspendedAt': Timestamp.now(),
+          'isActive': false,
+          'updatedAt': Timestamp.now(),
+        },
+        SetOptions(merge: true),
+      );
+
+      final providerRef = _firestore.collection('providers').doc(userId);
+      final providerSnap = await providerRef.get();
+      if (providerSnap.exists) {
+        batch.set(
+          providerRef,
+          {
+            'verificationStatus': 'suspended',
+            'isActive': false,
+            'updatedAt': Timestamp.now(),
+          },
+          SetOptions(merge: true),
+        );
+      }
+
+      final reelsSnap = await _firestore
+          .collection('reels')
+          .where('providerId', isEqualTo: userId)
+          .limit(200)
+          .get();
+      for (final doc in reelsSnap.docs) {
+        batch.update(doc.reference, {
+          'isPublic': false,
+          'moderationStatus': 'rejected',
+          'status': 'archived',
+          'updatedAt': Timestamp.now(),
+        });
+      }
+
+      final customerReels = await _firestore
+          .collection('reels')
+          .where('customerId', isEqualTo: userId)
+          .limit(100)
+          .get();
+      for (final doc in customerReels.docs) {
+        batch.update(doc.reference, {
+          'isPublic': false,
+          'moderationStatus': 'rejected',
+          'status': 'archived',
+          'updatedAt': Timestamp.now(),
+        });
+      }
+
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Error suspending user: $e');
+    }
+  }
+
+  /// Resolve report with content removal and optional user suspension.
+  Future<void> resolveContentReportWithAction({
+    required String reportId,
+    required String status,
+    String? adminNote,
+    bool unpublishReel = false,
+    bool suspendReportedUser = false,
+    String? reportedUserId,
+  }) async {
+    if (unpublishReel) {
+      final report = await _firestore.collection('content_reports').doc(reportId).get();
+      final reelId = report.data()?['reelId'] as String? ?? '';
+      if (reelId.isNotEmpty) {
+        await unpublishReelForModeration(reelId);
+      }
+    }
+    if (suspendReportedUser &&
+        reportedUserId != null &&
+        reportedUserId.isNotEmpty) {
+      await suspendUserForModeration(
+        userId: reportedUserId,
+        reason: adminNote ?? 'Suspended following content report',
+      );
+    }
+    await resolveContentReport(
+      reportId: reportId,
+      status: status,
+      adminNote: adminNote,
+    );
   }
 }

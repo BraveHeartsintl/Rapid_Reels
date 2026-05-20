@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_routes.dart';
+import '../../../../core/legal/legal_policy_catalog.dart';
 
 /// Help & Support Screen - FAQ and contact options
 class HelpSupportScreen extends ConsumerStatefulWidget {
@@ -313,6 +316,20 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                     },
                   ),
                 ],
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => context.push(
+                    AppRoutes.legalPolicy(LegalPolicyIds.complaints),
+                  ),
+                  icon: const Icon(Icons.description_outlined),
+                  label: const Text('Complaints Policy'),
+                ),
               ),
             ),
 

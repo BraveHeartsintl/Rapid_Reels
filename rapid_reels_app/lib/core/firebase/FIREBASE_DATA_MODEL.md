@@ -199,7 +199,7 @@ firestore/
 - `tags`: List<String>?
 - `hashtags`: List<String>?
 - `isPublic`: bool (for discover feed)
-- `isFeatured`: bool (for trending)
+- `isFeatured`: bool (admin-curated home featured reels)
 - `createdAt`: DateTime
 - `deliveredAt`: DateTime?
 - `publishedAt`: DateTime?

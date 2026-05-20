@@ -7,6 +7,7 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'app.dart';
 import 'core/config/stripe_config.dart';
 import 'core/constants/app_colors.dart';
+import 'core/legal/cookie_consent_prefs.dart';
 import 'core/firebase/services/firebase_init_service.dart';
 
 Future<void> main() async {
@@ -31,6 +32,7 @@ Future<void> main() async {
 
   // Initialize Firebase (Auth, Firestore, Analytics, Crashlytics)
   await FirebaseInitService.initialize();
+  await CookieConsentPrefs.syncFirebaseAnalyticsCollection();
 
   // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(

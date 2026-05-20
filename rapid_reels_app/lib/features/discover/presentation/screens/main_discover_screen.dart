@@ -8,6 +8,8 @@ import '../../../../core/constants/app_routes.dart';
 import '../../../../core/firebase/models/firebase_provider_model.dart';
 import '../../../../core/firebase/models/firebase_reel_model.dart';
 import '../../../../core/firebase/services/firestore_service.dart';
+import '../../../../core/moderation/reel_content_author.dart';
+import '../../../../shared/widgets/reel_moderation_sheet.dart';
 import '../../../../shared/widgets/reel_video_layer.dart';
 import '../../../reels/presentation/reel_engagement.dart';
 
@@ -28,6 +30,7 @@ class _MainDiscoverScreenState extends ConsumerState<MainDiscoverScreen>
   final _firestoreService = FirestoreService();
   List<FirebaseReelModel> _reels = [];
   final Map<String, FirebaseProviderModel?> _providerCache = {};
+  Set<String> _blockedUserIds = {};
   bool _isLoading = true;
 
   final List<String> _categories = [
@@ -44,7 +47,44 @@ class _MainDiscoverScreenState extends ConsumerState<MainDiscoverScreen>
     _tabController = TabController(length: _categories.length, vsync: this);
     _tabController.addListener(_onCategoryChanged);
     _pageController = PageController();
-    _loadReels();
+    _initFeed();
+  }
+
+  Future<void> _initFeed() async {
+    await _loadBlockedUsers();
+    await _loadReels();
+  }
+
+  Future<void> _loadBlockedUsers() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      _blockedUserIds = await _firestoreService.getBlockedUserIds(uid);
+    } catch (_) {
+      _blockedUserIds = {};
+    }
+  }
+
+  List<FirebaseReelModel> _withoutBlocked(List<FirebaseReelModel> reels) {
+    if (_blockedUserIds.isEmpty) return reels;
+    return reels
+        .where((r) => !reelInvolvesBlockedUser(r, _blockedUserIds))
+        .toList();
+  }
+
+  void _onUserBlocked(String blockedUserId) {
+    setState(() {
+      _blockedUserIds.add(blockedUserId);
+      _reels.removeWhere((r) => reelInvolvesBlockedUser(r, _blockedUserIds));
+      if (_reels.isEmpty) {
+        _currentIndex = 0;
+      } else if (_currentIndex >= _reels.length) {
+        _currentIndex = _reels.length - 1;
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(_currentIndex);
+        }
+      }
+    });
   }
 
   @override
@@ -86,7 +126,7 @@ class _MainDiscoverScreenState extends ConsumerState<MainDiscoverScreen>
       }
       if (mounted) {
         setState(() {
-          _reels = reels;
+          _reels = _withoutBlocked(reels);
           _providerCache.addAll(cache);
           _isLoading = false;
           _seedLikesFromReels();
@@ -565,6 +605,20 @@ class _MainDiscoverScreenState extends ConsumerState<MainDiscoverScreen>
                     reel: reel,
                     firestore: _firestoreService,
                     onSynced: _mergeReel,
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildActionButton(
+                icon: Icons.more_horiz_rounded,
+                label: 'More',
+                iconColor: Colors.white,
+                onTap: () {
+                  ReelModerationSheet.show(
+                    context: context,
+                    reel: reel,
+                    onBlockedLocally: () =>
+                        _onUserBlocked(reelContentAuthorId(reel)),
                   );
                 },
               ),

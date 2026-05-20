@@ -306,7 +306,7 @@ class _EventDetailsFormScreenState extends State<EventDetailsFormScreen> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
+                                color: AppColors.secondary,
                               ),
                             ),
                           ],

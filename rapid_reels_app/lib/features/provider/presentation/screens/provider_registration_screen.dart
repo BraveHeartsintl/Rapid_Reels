@@ -6,6 +6,8 @@ import '../../../../core/constants/app_routes.dart';
 import '../../../../core/firebase/services/firestore_service.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
+import '../../../../core/legal/ugc_community_prefs.dart';
+import '../../../../shared/widgets/signup_legal_consent_section.dart';
 
 class ProviderRegistrationScreen extends StatefulWidget {
   const ProviderRegistrationScreen({super.key});
@@ -27,7 +29,8 @@ class _ProviderRegistrationScreenState extends State<ProviderRegistrationScreen>
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  bool _agreeToTerms = false;
+  bool _agreeLegal = false;
+  bool _marketingOptIn = false;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirestoreService _firestoreService = FirestoreService();
 
@@ -239,39 +242,21 @@ class _ProviderRegistrationScreenState extends State<ProviderRegistrationScreen>
                 },
               ),
               const SizedBox(height: 24),
-              
-              // Terms and Conditions
-              Row(
-                children: [
-                  Checkbox(
-                    value: _agreeToTerms,
-                    onChanged: (value) {
-                      setState(() => _agreeToTerms = value ?? false);
-                    },
-                    activeColor: ProviderAppColors.primary,
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => _agreeToTerms = !_agreeToTerms);
-                      },
-                      child: Text(
-                        'I agree to the Terms & Conditions and Privacy Policy',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+
+              SignupLegalConsentSection(
+                agreeLegal: _agreeLegal,
+                onAgreeLegal: (v) => setState(() => _agreeLegal = v),
+                marketingOptIn: _marketingOptIn,
+                onMarketingOptIn: (v) => setState(() => _marketingOptIn = v),
+                checkboxActiveColor: ProviderAppColors.primary,
+                linkColor: ProviderAppColors.primary,
               ),
               const SizedBox(height: 32),
-              
+
               // Register Button
               CustomButton(
                 text: 'Create Account',
-                onPressed: _agreeToTerms ? _handleRegistration : null,
+                onPressed: _agreeLegal ? _handleRegistration : null,
                 isLoading: _isLoading,
               ),
               const SizedBox(height: 16),
@@ -307,12 +292,17 @@ class _ProviderRegistrationScreenState extends State<ProviderRegistrationScreen>
       return;
     }
 
-    if (!_agreeToTerms) {
+    if (!_agreeLegal) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please agree to Terms & Conditions')),
+        const SnackBar(
+          content: Text(
+            'Please confirm you agree to the Terms, Privacy Policy, and Acceptable Use Policy.',
+          ),
+        ),
       );
       return;
     }
+    await UgcCommunityPrefs.accept();
 
     setState(() => _isLoading = true);
 
@@ -337,6 +327,7 @@ class _ProviderRegistrationScreenState extends State<ProviderRegistrationScreen>
                 .trim(),
         email: _emailController.text.trim(),
         phoneNumber: _phoneController.text.trim(),
+        marketingConsent: _marketingOptIn,
       );
 
       if (!mounted) return;

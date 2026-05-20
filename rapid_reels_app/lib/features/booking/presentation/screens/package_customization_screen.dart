@@ -112,7 +112,7 @@ class _PackageCustomizationScreenState extends State<PackageCustomizationScreen>
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
+                                  color: AppColors.secondary,
                                 ),
                               ),
                             ),
@@ -331,7 +331,7 @@ class _PackageCustomizationScreenState extends State<PackageCustomizationScreen>
                           '+£${_additionalCost.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontSize: 14,
-                            color: AppColors.success,
+                            color: AppColors.secondary,
                           ),
                         ),
                       ],
@@ -358,7 +358,7 @@ class _PackageCustomizationScreenState extends State<PackageCustomizationScreen>
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: AppColors.secondary,
                         ),
                       ),
                     ],
@@ -452,7 +452,7 @@ class _PackageCustomizationScreenState extends State<PackageCustomizationScreen>
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    color: AppColors.secondary,
                   ),
                 ),
               ],

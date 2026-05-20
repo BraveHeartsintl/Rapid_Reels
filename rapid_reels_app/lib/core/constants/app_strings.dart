@@ -31,6 +31,7 @@ class AppStrings {
   static const String myBookings = 'My Bookings';
   static const String referAndEarn = 'Refer & Earn';
   static const String trendingReels = 'Trending Reels';
+  static const String featuredReels = 'Featured Reels';
   static const String discoverWithVibe = 'Discover with Vibe';
   static const String viewAll = 'View all';
   /// Promo banner block on home (carousel + dots + Book Now).
@@ -111,6 +112,7 @@ class AppStrings {
   static const String done = 'Done';
   static const String next = 'Next';
   static const String skip = 'Skip';
+  static const String browseAsGuest = 'Browse without signing in';
   static const String continueText = 'Continue';
   static const String submit = 'Submit';
   static const String loading = 'Loading...';

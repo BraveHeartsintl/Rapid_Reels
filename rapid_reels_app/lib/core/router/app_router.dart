@@ -62,7 +62,10 @@ import '../../features/profile/presentation/screens/payment_methods_screen.dart'
 import '../../features/profile/presentation/screens/settings_screen.dart';
 import '../../features/profile/presentation/screens/support_screen.dart';
 import '../../features/profile/presentation/screens/my_tickets_screen.dart';
-import '../../features/profile/presentation/screens/refund_cancellation_policy_screen.dart';
+import '../../features/legal/presentation/screens/legal_markdown_policy_screen.dart';
+import '../../features/legal/presentation/screens/legal_documents_hub_screen.dart';
+import '../../features/legal/presentation/screens/cookie_preferences_screen.dart';
+import '../../features/support/presentation/screens/help_support_screen.dart';
 
 // Provider screens
 import '../../features/provider/presentation/screens/provider_login_screen.dart';
@@ -104,9 +107,12 @@ import '../../features/admin/presentation/screens/admin_payment_management_scree
 import '../../features/admin/presentation/screens/admin_provider_earnings_screen.dart';
 import '../../features/admin/presentation/screens/admin_offers_management_screen.dart';
 import '../../features/admin/presentation/screens/admin_reviews_moderation_screen.dart';
+import '../../features/admin/presentation/screens/admin_content_reports_screen.dart';
+import '../../features/admin/presentation/screens/admin_reel_approval_screen.dart';
 
 // Main scaffold
 import '../../shared/widgets/main_scaffold.dart';
+import '../../shared/widgets/ugc_community_gate.dart';
 
 // Constants
 import '../constants/app_routes.dart';
@@ -579,13 +585,15 @@ class AppRouter {
           return _buildPageWithFadeTransition(
             context,
             state,
-            ReelPlayerScreen(
-              reelId: resolvedReelId,
-              reels: reels,
-              initialIndex: _parseInt(
-                extra['initialIndex'],
-                0,
-              ).clamp(0, reels.isEmpty ? 0 : reels.length - 1),
+            UgcCommunityGate(
+              child: ReelPlayerScreen(
+                reelId: resolvedReelId,
+                reels: reels,
+                initialIndex: _parseInt(
+                  extra['initialIndex'],
+                  0,
+                ).clamp(0, reels.isEmpty ? 0 : reels.length - 1),
+              ),
             ),
           );
         },
@@ -610,7 +618,7 @@ class AppRouter {
         pageBuilder: (context, state) => _buildPageWithFadeTransition(
           context,
           state,
-          const DiscoverFeedScreen(),
+          const UgcCommunityGate(child: DiscoverFeedScreen()),
         ),
       ),
       GoRoute(
@@ -619,7 +627,7 @@ class AppRouter {
         pageBuilder: (context, state) => _buildPageWithSlideTransition(
           context,
           state,
-          const TrendingReelsScreen(),
+          const UgcCommunityGate(child: TrendingReelsScreen()),
         ),
       ),
 
@@ -655,6 +663,54 @@ class AppRouter {
           context,
           state,
           const RedemptionScreen(),
+        ),
+      ),
+
+      GoRoute(
+        path: AppRoutes.refundCancellationPolicy,
+        redirect: (_, __) => AppRoutes.legalPolicy('refund'),
+      ),
+      GoRoute(
+        path: AppRoutes.termsAndPrivacy,
+        redirect: (_, __) => AppRoutes.legalPolicy('terms'),
+      ),
+      GoRoute(
+        path: AppRoutes.legalDocuments,
+        name: 'legalDocuments',
+        pageBuilder: (context, state) => _buildPageWithSlideTransition(
+          context,
+          state,
+          const LegalDocumentsHubScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/legal/:policyId',
+        name: 'legalPolicy',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['policyId'] ?? '';
+          return _buildPageWithSlideTransition(
+            context,
+            state,
+            LegalMarkdownPolicyScreen(policyId: id),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.cookiePreferences,
+        name: 'cookiePreferences',
+        pageBuilder: (context, state) => _buildPageWithSlideTransition(
+          context,
+          state,
+          const CookiePreferencesScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.helpSupport,
+        name: 'helpSupport',
+        pageBuilder: (context, state) => _buildPageWithSlideTransition(
+          context,
+          state,
+          const HelpSupportScreen(),
         ),
       ),
 
@@ -714,15 +770,6 @@ class AppRouter {
           context,
           state,
           const MyTicketsScreen(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.refundCancellationPolicy,
-        name: 'refundCancellationPolicy',
-        pageBuilder: (context, state) => _buildPageWithSlideTransition(
-          context,
-          state,
-          const RefundCancellationPolicyScreen(),
         ),
       ),
 
@@ -1205,6 +1252,24 @@ class AppRouter {
           context,
           state,
           const AdminReviewsModerationScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminContentReports,
+        name: 'adminContentReports',
+        pageBuilder: (context, state) => _buildPageWithSlideTransition(
+          context,
+          state,
+          const AdminContentReportsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.adminReelApproval,
+        name: 'adminReelApproval',
+        pageBuilder: (context, state) => _buildPageWithSlideTransition(
+          context,
+          state,
+          const AdminReelApprovalScreen(),
         ),
       ),
       GoRoute(

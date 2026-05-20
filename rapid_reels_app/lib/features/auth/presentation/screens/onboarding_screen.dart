@@ -4,6 +4,7 @@ import 'package:video_player/video_player.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../../core/session/guest_session_prefs.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../shared/widgets/custom_button.dart';
 
@@ -155,8 +156,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
+  Future<void> _browseAsGuest() async {
+    await GuestSessionPrefs.enableGuestBrowsing();
+    if (mounted) context.go(AppRoutes.home);
+  }
+
   void _skip() {
-    context.go(AppRoutes.roleSelection);
+    _browseAsGuest();
   }
 
   @override
@@ -381,7 +387,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ),
               ),
               child: Text(
-                AppStrings.skip,
+                AppStrings.browseAsGuest,
                 style: AppTypography.labelMedium.copyWith(
                   color: Colors.white,
                 ),
@@ -416,6 +422,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           
           // Get Started button
           _buildNextButton(),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: _browseAsGuest,
+            child: Text(
+              AppStrings.browseAsGuest,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -8,6 +8,8 @@ import '../../../../core/firebase/models/firebase_provider_model.dart';
 import '../../../../core/firebase/models/firebase_reel_model.dart';
 import '../../../../core/firebase/services/firestore_service.dart';
 import '../../../../core/theme/text_styles.dart';
+import '../../../../core/moderation/reel_content_author.dart';
+import '../../../../shared/widgets/reel_moderation_sheet.dart';
 import '../../../../shared/widgets/reel_video_layer.dart';
 import '../../../reels/presentation/reel_engagement.dart';
 
@@ -26,6 +28,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> {
   final Map<String, bool> _likedReels = {};
   List<FirebaseReelModel> _reels = [];
   final Map<String, FirebaseProviderModel?> _providerCache = {};
+  Set<String> _blockedUserIds = {};
   bool _isLoading = true;
   String? _error;
   int _currentIndex = 0;
@@ -34,7 +37,44 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
-    _loadReels();
+    _initFeed();
+  }
+
+  Future<void> _initFeed() async {
+    await _loadBlockedUsers();
+    await _loadReels();
+  }
+
+  Future<void> _loadBlockedUsers() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      _blockedUserIds = await _firestoreService.getBlockedUserIds(uid);
+    } catch (_) {
+      _blockedUserIds = {};
+    }
+  }
+
+  List<FirebaseReelModel> _withoutBlocked(List<FirebaseReelModel> reels) {
+    if (_blockedUserIds.isEmpty) return reels;
+    return reels
+        .where((r) => !reelInvolvesBlockedUser(r, _blockedUserIds))
+        .toList();
+  }
+
+  void _onUserBlocked(String blockedUserId) {
+    setState(() {
+      _blockedUserIds.add(blockedUserId);
+      _reels.removeWhere((r) => reelInvolvesBlockedUser(r, _blockedUserIds));
+      if (_reels.isEmpty) {
+        _currentIndex = 0;
+      } else if (_currentIndex >= _reels.length) {
+        _currentIndex = _reels.length - 1;
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(_currentIndex);
+        }
+      }
+    });
   }
 
   @override
@@ -53,9 +93,20 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> {
         eventType: _selectedFilter == 'all' ? null : _selectedFilter,
       );
 
-      final providerIds = reels.map((r) => r.providerId).toSet().toList();
+      final providerIds = reels
+          .map((r) => r.providerId.trim())
+          .where((id) => id.isNotEmpty)
+          .toSet()
+          .toList();
       final providers = await Future.wait(
-        providerIds.map((id) => _firestoreService.getProvider(id)),
+        providerIds.map((id) async {
+          try {
+            return await _firestoreService.getProvider(id);
+          } catch (_) {
+            // Some reels may not map to a publicly readable provider profile.
+            return null;
+          }
+        }),
       );
       final cache = <String, FirebaseProviderModel?>{};
       for (var i = 0; i < providerIds.length; i++) {
@@ -63,7 +114,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> {
       }
       if (mounted) {
         setState(() {
-          _reels = reels;
+          _reels = _withoutBlocked(reels);
           _providerCache.addAll(cache);
           _isLoading = false;
           _seedLikesFromReels();
@@ -251,6 +302,19 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> {
                               reel: reel,
                               firestore: _firestoreService,
                               onSynced: _mergeReel,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        _buildActionButton(
+                          Icons.more_horiz_rounded,
+                          'More',
+                          () {
+                            ReelModerationSheet.show(
+                              context: context,
+                              reel: reel,
+                              onBlockedLocally: () =>
+                                  _onUserBlocked(reelContentAuthorId(reel)),
                             );
                           },
                         ),

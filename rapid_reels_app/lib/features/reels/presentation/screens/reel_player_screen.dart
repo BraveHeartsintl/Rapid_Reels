@@ -11,6 +11,8 @@ import '../../../../core/firebase/models/firebase_provider_model.dart';
 import '../../../../core/firebase/models/firebase_reel_model.dart';
 import '../../../../core/firebase/services/firestore_service.dart';
 import '../../../../core/theme/text_styles.dart';
+import '../../../../core/moderation/reel_content_author.dart';
+import '../../../../shared/widgets/reel_moderation_sheet.dart';
 import '../../../../shared/widgets/reel_video_layer.dart';
 import '../reel_engagement.dart';
 
@@ -39,6 +41,7 @@ class _ReelPlayerScreenState extends State<ReelPlayerScreen> {
   final _firestoreService = FirestoreService();
   final Map<String, FirebaseProviderModel?> _providerCache = {};
   final Set<String> _countedViewReelIds = {};
+  Set<String> _blockedUserIds = {};
 
   @override
   void initState() {
@@ -48,6 +51,7 @@ class _ReelPlayerScreenState extends State<ReelPlayerScreen> {
     _pageController = PageController(initialPage: _currentIndex);
     _seedLikesFromReels();
     _loadProviders();
+    _loadBlockedUsers();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_reels.isNotEmpty) _recordViewForReel(_reels[_currentIndex].reelId);
     });
@@ -76,6 +80,39 @@ class _ReelPlayerScreenState extends State<ReelPlayerScreen> {
     unawaited(
       _firestoreService.incrementReelViews(reelId).catchError((_) {}),
     );
+  }
+
+  Future<void> _loadBlockedUsers() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final blocked = await _firestoreService.getBlockedUserIds(uid);
+      if (!mounted) return;
+      setState(() {
+        _blockedUserIds = blocked;
+        _reels.removeWhere((r) => reelInvolvesBlockedUser(r, _blockedUserIds));
+        if (_currentIndex >= _reels.length && _reels.isNotEmpty) {
+          _currentIndex = _reels.length - 1;
+        }
+      });
+    } catch (_) {}
+  }
+
+  void _onUserBlocked(String blockedUserId) {
+    setState(() {
+      _blockedUserIds.add(blockedUserId);
+      _reels.removeWhere((r) => reelInvolvesBlockedUser(r, _blockedUserIds));
+    });
+    if (_reels.isEmpty && mounted) {
+      Navigator.pop(context);
+      return;
+    }
+    if (_currentIndex >= _reels.length) {
+      setState(() => _currentIndex = (_reels.length - 1).clamp(0, 999));
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(_currentIndex);
+      }
+    }
   }
 
   Future<void> _loadProviders() async {
@@ -704,41 +741,23 @@ class _ReelPlayerScreenState extends State<ReelPlayerScreen> {
   }
 
   void _showOptionsSheet(FirebaseReelModel reel) {
-    showModalBottomSheet(
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final isOwn = uid != null &&
+        (uid == reel.customerId || uid == reel.providerId);
+    ReelModerationSheet.show(
       context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildOptionItem(Icons.info_outline, 'Reel Info', () {}),
-            _buildOptionItem(Icons.flag_outlined, 'Report', () {}),
-            _buildOptionItem(Icons.edit, 'Request Re-edit', () {}),
-            _buildOptionItem(Icons.delete_outline, 'Delete from Gallery', () {}),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOptionItem(IconData icon, String label, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.textPrimary),
-      title: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 15,
-          color: AppColors.textPrimary,
-        ),
-      ),
-      onTap: () {
-        Navigator.pop(context);
-        onTap();
-      },
+      reel: reel,
+      onBlockedLocally: () => _onUserBlocked(reelContentAuthorId(reel)),
+      allowDeleteOwn: isOwn,
+      onDeleteOwn: isOwn
+          ? () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Delete from My Reels in your profile gallery.'),
+                ),
+              );
+            }
+          : null,
     );
   }
 }

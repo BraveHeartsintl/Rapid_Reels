@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../core/theme/text_styles.dart';
+import '../../../../core/legal/ugc_community_prefs.dart';
+import '../../../../shared/widgets/signup_legal_consent_section.dart';
 import '../providers/auth_provider.dart';
 import '../../data/models/user_model.dart';
 
@@ -23,6 +26,24 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedGender;
   bool _isLoading = false;
+  bool _agreeLegal = false;
+  bool _marketingOptIn = false;
+
+  static const _pendingMarketingKey = 'pending_signup_marketing';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPendingMarketing();
+  }
+
+  Future<void> _loadPendingMarketing() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _marketingOptIn = prefs.getBool(_pendingMarketingKey) ?? false;
+    });
+  }
 
   @override
   void dispose() {
@@ -35,6 +56,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    if (!_agreeLegal) {
+      Helpers.showSnackBar(
+        context,
+        'Please confirm you agree to the Terms, Privacy Policy, and Acceptable Use Policy.',
+        isError: true,
+      );
+      return;
+    }
+    await UgcCommunityPrefs.accept();
 
     setState(() => _isLoading = true);
 
@@ -86,8 +117,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
           'metadata': {
             'clientProfileCompleted': true,
             'gender': _selectedGender,
+            'marketingConsent': _marketingOptIn,
+            'termsPrivacyAupAcceptedAt': DateTime.now().toIso8601String(),
           },
         });
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_pendingMarketingKey);
       }
 
       setState(() => _isLoading = false);
@@ -235,7 +270,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   validator: (value) =>
                       value == null ? 'Please select gender' : null,
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
+
+                SignupLegalConsentSection(
+                  agreeLegal: _agreeLegal,
+                  onAgreeLegal: (v) => setState(() => _agreeLegal = v),
+                  marketingOptIn: _marketingOptIn,
+                  onMarketingOptIn: (v) => setState(() => _marketingOptIn = v),
+                ),
+                const SizedBox(height: 24),
 
                 // Continue Button
                 _buildContinueButton(),

@@ -334,7 +334,7 @@ class _PackageSelectionScreenState extends State<PackageSelectionScreen> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
+                                color: AppColors.secondary,
                               ),
                             ),
                           ],
@@ -387,7 +387,10 @@ class _PackageSelectionScreenState extends State<PackageSelectionScreen> {
                           const SizedBox(height: 10),
                           TextButton(
                             onPressed: _showCustomAmountDialog,
-                            child: const Text('Skip standard package and enter custom amount'),
+                            child: const Text(
+                              'Skip standard package and enter custom amount',
+                              style: TextStyle(color: AppColors.secondary),
+                            ),
                           ),
                         ],
                       ),

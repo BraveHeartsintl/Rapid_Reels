@@ -216,7 +216,7 @@ class ProviderCard extends StatelessWidget {
                         'Starting from ',
                         style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.textSecondary,
+                          color: AppColors.secondary,
                         ),
                       ),
                       Text(
@@ -224,7 +224,7 @@ class ProviderCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: AppColors.secondary,
                         ),
                       ),
                     ],

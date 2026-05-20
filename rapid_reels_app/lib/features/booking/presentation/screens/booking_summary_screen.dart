@@ -11,6 +11,7 @@ import '../../../../core/config/stripe_config.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/legal/legal_policy_catalog.dart';
 import '../../../../core/firebase/booking_callable_payload.dart';
 import '../../../../core/firebase/models/firebase_offer_model.dart';
 import '../../../../core/firebase/models/firebase_provider_model.dart';
@@ -30,7 +31,9 @@ class BookingSummaryScreen extends StatefulWidget {
 }
 
 class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
-  bool _acceptedTerms = false;
+  bool _acceptedBookingTerms = false;
+  bool _acceptedRefundPolicy = false;
+  bool _acceptedImageRights = false;
   bool _isProcessing = false;
   final _firestoreService = FirestoreService();
   final _stripePaymentService = StripePaymentService();
@@ -430,7 +433,10 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : const Text('Apply'),
+                                : const Text(
+                                    'Apply',
+                                    style: TextStyle(color: AppColors.secondary),
+                                  ),
                           ),
                         ],
                       ),
@@ -499,7 +505,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                     ),
                   ]),
 
-                  // Terms & Conditions
+                  // Pre-payment legal acknowledgements (UK Consumer Contracts / platform policies)
                   Container(
                     margin: const EdgeInsets.only(top: 24),
                     padding: const EdgeInsets.all(16),
@@ -507,44 +513,40 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
                       color: AppColors.surface,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Checkbox(
-                          value: _acceptedTerms,
-                          onChanged: (value) =>
-                              setState(() => _acceptedTerms = value ?? false),
-                          activeColor: AppColors.primary,
+                        _bookingLegalAckRow(
+                          value: _acceptedBookingTerms,
+                          onChanged: (v) =>
+                              setState(() => _acceptedBookingTerms = v),
+                          intro: 'I have read and agree to the',
+                          linkLabel: 'Terms and Conditions',
+                          policyId: LegalPolicyIds.terms,
+                          suffix: ' governing the Service.',
                         ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: GestureDetector(
-                              onTap: () => _showTermsDialog(),
-                              child: RichText(
-                                text: TextSpan(
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.textSecondary,
-                                    height: 1.4,
-                                  ),
-                                  children: [
-                                    const TextSpan(text: 'I agree to the '),
-                                    TextSpan(
-                                      text: 'Terms & Conditions',
-                                      style: TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w600,
-                                        decoration: TextDecoration.underline,
-                                      ),
-                                    ),
-                                    const TextSpan(
-                                        text: ' and Cancellation Policy'),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
+                        const Divider(height: 20),
+                        _bookingLegalAckRow(
+                          value: _acceptedRefundPolicy,
+                          onChanged: (v) =>
+                              setState(() => _acceptedRefundPolicy = v),
+                          intro:
+                              'I have read the',
+                          linkLabel: 'Refund and Cancellation Policy',
+                          policyId: LegalPolicyIds.refund,
+                          suffix:
+                              ' and understand how refunds and cancellations work before I pay.',
+                        ),
+                        const Divider(height: 20),
+                        _bookingLegalAckRow(
+                          value: _acceptedImageRights,
+                          onChanged: (v) =>
+                              setState(() => _acceptedImageRights = v),
+                          intro:
+                              'I confirm I have authority to authorise photography at the venue and consent on behalf of attendees where required, as described in the',
+                          linkLabel: 'Image Rights and Subject Consent Policy',
+                          policyId: LegalPolicyIds.imageRights,
+                          suffix: '.',
                         ),
                       ],
                     ),
@@ -583,127 +585,53 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
     );
   }
 
-  void _showTermsDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.gavel_rounded, color: AppColors.primary, size: 22),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Terms & Conditions',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Rapid Reels — Booking Terms & Conditions (United Kingdom)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _termItem(
-                '1. Contract Formation',
-                'A legally binding contract is formed between you and Rapid Reels when your booking is confirmed and payment is received. By proceeding, you agree to these terms in accordance with the Consumer Rights Act 2015.',
-                AppColors.primary,
-              ),
-              _termItem(
-                '2. Right to Cancel (Consumer Contracts Regulations 2013)',
-                'As this is a service booked for a specific date and time, your statutory 14-day cooling-off right does not apply once the service has commenced or where you have expressly requested the service begin before the cooling-off period expires.',
-                AppColors.primary,
-              ),
-              _termItem(
-                '3. Cancellation by You',
-                'If you wish to cancel your booking, you must notify us in writing via the app support. Cancellations made more than 72 hours before the event may be eligible for a partial refund at our discretion. Cancellations within 72 hours of the event are non-refundable.',
-                AppColors.primary,
-              ),
-              _termItem(
-                '4. Cancellation by Rapid Reels',
-                'In the unlikely event that we are unable to fulfil your booking, you will receive a full refund within 14 days or we will offer a suitable replacement at no extra cost, in line with the Consumer Rights Act 2015.',
-                AppColors.primary,
-              ),
-              _termItem(
-                '5. Service Quality',
-                'All services are provided with reasonable care and skill as required under the Consumer Rights Act 2015. If you believe the service was not delivered to a satisfactory standard, you must notify us within 48 hours of the event.',
-                AppColors.primary,
-              ),
-              _termItem(
-                '6. Payment & Pricing',
-                'All prices are inclusive of VAT where applicable. Payment is processed securely. You authorise Rapid Reels to charge the agreed amount to your selected payment method upon booking confirmation.',
-                AppColors.primary,
-              ),
-              _termItem(
-                '7. Liability',
-                'Rapid Reels\' liability is limited to the value of the booking. We are not liable for indirect or consequential losses. Nothing in these terms affects your statutory rights under UK consumer law.',
-                AppColors.primary,
-              ),
-              _termItem(
-                '8. Governing Law',
-                'These terms are governed by the laws of England and Wales. Any disputes shall be subject to the exclusive jurisdiction of the courts of England and Wales.',
-                AppColors.primary,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                setState(() => _acceptedTerms = true);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text('I Agree & Accept'),
-            ),
-          ),
-        ],
-      ),
+  Widget _bookingLegalAckRow({
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required String intro,
+    required String linkLabel,
+    required String policyId,
+    required String suffix,
+  }) {
+    final linkStyle = TextStyle(
+      color: AppColors.secondary,
+      fontWeight: FontWeight.w600,
+      decoration: TextDecoration.underline,
+      fontSize: 14,
+      height: 1.4,
     );
-  }
-
-  Widget _termItem(String title, String body, Color titleColor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: titleColor,
+    const bodyStyle = TextStyle(
+      fontSize: 14,
+      color: AppColors.textSecondary,
+      height: 1.4,
+    );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Checkbox(
+          value: value,
+          onChanged: (v) => onChanged(v ?? false),
+          activeColor: AppColors.primary,
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                Text(intro, style: bodyStyle),
+                GestureDetector(
+                  onTap: () => context.push(AppRoutes.legalPolicy(policyId)),
+                  child: Text(linkLabel, style: linkStyle),
+                ),
+                Text(suffix, style: bodyStyle),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            body,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              height: 1.45,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -771,7 +699,7 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
             style: TextStyle(
               fontSize: isTotal ? 18 : 14,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
-              color: isTotal ? AppColors.primary : AppColors.textPrimary,
+              color: isTotal ? AppColors.secondary : AppColors.textPrimary,
             ),
             textAlign: TextAlign.right,
           ),
@@ -801,12 +729,14 @@ class _BookingSummaryScreenState extends State<BookingSummaryScreen> {
   }
 
   Future<void> _handleConfirmBooking() async {
-    if (!_acceptedTerms) {
+    if (!_acceptedBookingTerms ||
+        !_acceptedRefundPolicy ||
+        !_acceptedImageRights) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Please accept the Terms & Conditions to continue.',
+            'Please confirm all booking, refund, and image consent statements before paying.',
           ),
           backgroundColor: Colors.orange,
           duration: Duration(seconds: 4),

@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../../core/constants/app_strings.dart';
+import '../../../../core/session/guest_session_prefs.dart';
 
 /// Full-screen role gate: customer (phone OTP) vs provider portal (phone or email + password).
 class RoleSelectionScreen extends StatefulWidget {
@@ -122,7 +124,22 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen>
                       color: AppColors.textTertiary,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () async {
+                      await GuestSessionPrefs.enableGuestBrowsing();
+                      if (context.mounted) context.go(AppRoutes.home);
+                    },
+                    child: Text(
+                      AppStrings.browseAsGuest,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                 ],
               ),
             ),

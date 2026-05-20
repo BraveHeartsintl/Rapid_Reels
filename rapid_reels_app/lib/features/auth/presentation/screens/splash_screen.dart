@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../../core/session/guest_session_prefs.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -52,7 +53,16 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     if (!mounted) return;
-    context.go(user != null ? AppRoutes.home : AppRoutes.onboarding);
+
+    if (user != null) {
+      await GuestSessionPrefs.clear();
+      if (mounted) context.go(AppRoutes.home);
+      return;
+    }
+
+    final guestBrowsing = await GuestSessionPrefs.isGuestBrowsing();
+    if (!mounted) return;
+    context.go(guestBrowsing ? AppRoutes.home : AppRoutes.onboarding);
   }
 
   @override

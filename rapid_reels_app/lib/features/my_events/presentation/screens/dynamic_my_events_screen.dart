@@ -5,6 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/theme/text_styles.dart';
 import '../../../../shared/widgets/custom_button.dart';
+import '../../../../shared/widgets/guest_sign_in_prompt.dart';
 import '../providers/my_events_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -38,8 +39,15 @@ class _DynamicMyEventsScreenState extends ConsumerState<DynamicMyEventsScreen> {
     if (userId.isEmpty) {
       return Scaffold(
         backgroundColor: AppColors.background,
-        body: const Center(
-          child: Text('Please login to view events'),
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          title: Text('My Events', style: AppTypography.headlineSmall),
+        ),
+        body: const GuestSignInPrompt(
+          title: 'My events',
+          message: 'Sign in to view and manage your booked events.',
+          icon: Icons.event_note_outlined,
         ),
       );
     }

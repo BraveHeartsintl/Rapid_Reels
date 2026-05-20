@@ -22,6 +22,8 @@ class FirebaseReelModel {
   final List<String>? tags;
   final List<String>? hashtags;
   final bool isPublic; // Can be shown in discover feed
+  /// Admin review: pending_review → approved (public) or rejected.
+  final String moderationStatus;
   final bool isFeatured; // Featured in trending
   final DateTime createdAt;
   final DateTime? deliveredAt;
@@ -48,6 +50,7 @@ class FirebaseReelModel {
     this.tags,
     this.hashtags,
     this.isPublic = false,
+    this.moderationStatus = 'pending_review',
     this.isFeatured = false,
     required this.createdAt,
     this.deliveredAt,
@@ -58,6 +61,23 @@ class FirebaseReelModel {
 
   bool isLikedByUser(String? userId) =>
       userId != null && userId.isNotEmpty && likedBy.contains(userId);
+
+  /// Visible in discover / public feeds after admin approval.
+  bool get isDiscoverApproved {
+    if (moderationStatus != 'approved') return false;
+    return isPublic && (status == 'delivered' || status == 'published');
+  }
+
+  static String _moderationStatusFromFirestore(Map<String, dynamic> data) {
+    final raw = data['moderationStatus'] as String?;
+    if (raw != null && raw.isNotEmpty) return raw;
+    final pub = firebaseToBool(data['isPublic'], false);
+    final st = data['status'] as String? ?? '';
+    if (pub && (st == 'delivered' || st == 'published')) {
+      return 'approved';
+    }
+    return 'pending_review';
+  }
 
   // Display helpers for UI compatibility
   int get views => analytics.views;
@@ -86,6 +106,7 @@ class FirebaseReelModel {
       tags: data['tags'] != null ? List<String>.from(data['tags']) : null,
       hashtags: data['hashtags'] != null ? List<String>.from(data['hashtags']) : null,
       isPublic: firebaseToBool(data['isPublic'], false),
+      moderationStatus: _moderationStatusFromFirestore(data),
       isFeatured: firebaseToBool(data['isFeatured'], false),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       deliveredAt: (data['deliveredAt'] as Timestamp?)?.toDate(),
@@ -115,6 +136,7 @@ class FirebaseReelModel {
       'tags': tags,
       'hashtags': hashtags,
       'isPublic': isPublic,
+      'moderationStatus': moderationStatus,
       'isFeatured': isFeatured,
       'createdAt': Timestamp.fromDate(createdAt),
       'deliveredAt': deliveredAt != null ? Timestamp.fromDate(deliveredAt!) : null,
@@ -142,6 +164,7 @@ class FirebaseReelModel {
     List<String>? tags,
     List<String>? hashtags,
     bool? isPublic,
+    String? moderationStatus,
     bool? isFeatured,
     DateTime? createdAt,
     DateTime? deliveredAt,
@@ -167,6 +190,7 @@ class FirebaseReelModel {
       tags: tags ?? this.tags,
       hashtags: hashtags ?? this.hashtags,
       isPublic: isPublic ?? this.isPublic,
+      moderationStatus: moderationStatus ?? this.moderationStatus,
       isFeatured: isFeatured ?? this.isFeatured,
       createdAt: createdAt ?? this.createdAt,
       deliveredAt: deliveredAt ?? this.deliveredAt,

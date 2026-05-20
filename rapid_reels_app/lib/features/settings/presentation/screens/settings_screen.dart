@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 
-/// Comprehensive Settings Screen
-class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({super.key});
+/// Demo / extended settings UI (not wired in [AppRouter](rapid_reels_app/lib/core/router/app_router.dart); the live route uses [profile `SettingsScreen`](rapid_reels_app/lib/features/profile/presentation/screens/settings_screen.dart)).
+class ComprehensiveSettingsScreen extends ConsumerStatefulWidget {
+  const ComprehensiveSettingsScreen({super.key});
 
   @override
-  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<ComprehensiveSettingsScreen> createState() =>
+      _ComprehensiveSettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+class _ComprehensiveSettingsScreenState
+    extends ConsumerState<ComprehensiveSettingsScreen> {
   bool _notificationsEnabled = true;
   bool _emailNotifications = true;
   bool _smsNotifications = false;

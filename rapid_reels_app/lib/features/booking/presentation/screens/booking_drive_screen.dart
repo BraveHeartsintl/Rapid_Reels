@@ -62,6 +62,7 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
   bool _gridView = true;
   bool _uploading = false;
   bool _creatingShareLink = false;
+  bool _publishEditedVideosToReels = false;
   final Map<String, Future<String>> _urlCache = <String, Future<String>>{};
   FirebaseBookingModel? _bookingCache;
 
@@ -123,6 +124,10 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
     if (!_canUploadTo(_selectedFolder) || _uploading) return;
     final picked = await _picker.pickMultipleMedia();
     if (picked.isEmpty) return;
+    final shouldPublishUploadedVideos =
+        widget.role == BookingDriveScreenRole.admin &&
+        _selectedFolder == BookingDriveFolderType.edited &&
+        _publishEditedVideosToReels;
 
     setState(() => _uploading = true);
     try {
@@ -168,6 +173,7 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
         await _maybeCreateReelFromUploadedVideo(
           uploadedFile: model,
           fallbackContentType: inferredContentType,
+          shouldPublishToReels: shouldPublishUploadedVideos,
         );
       }
       if (!mounted) return;
@@ -382,19 +388,35 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
             stream: _firestore.streamBookingDriveMeta(widget.bookingId),
             builder: (context, snapshot) {
               final meta = snapshot.data;
-              if (_canToggleCustomerShare && meta != null) {
-                return SwitchListTile(
-                  title: const Text('Share with customer'),
-                  subtitle: Text(
-                    meta.isSharedWithCustomer
-                        ? 'Customer can view booking files'
-                        : 'Customer access is blocked until approval',
-                  ),
-                  value: meta.isSharedWithCustomer,
-                  onChanged: (value) => _toggleShare(meta, value),
-                );
+              if (!_canToggleCustomerShare) {
+                return const SizedBox.shrink();
               }
-              return const SizedBox.shrink();
+              return Column(
+                children: [
+                  if (meta != null)
+                    SwitchListTile(
+                      title: const Text('Share with customer'),
+                      subtitle: Text(
+                        meta.isSharedWithCustomer
+                            ? 'Customer can view booking files'
+                            : 'Customer access is blocked until approval',
+                      ),
+                      value: meta.isSharedWithCustomer,
+                      onChanged: (value) => _toggleShare(meta, value),
+                    ),
+                  if (_selectedFolder == BookingDriveFolderType.edited)
+                    SwitchListTile(
+                      title: const Text('Publish edited uploads to Reels'),
+                      subtitle: const Text(
+                        'When enabled, uploaded edited videos will also appear in public Reels.',
+                      ),
+                      value: _publishEditedVideosToReels,
+                      onChanged: (value) {
+                        setState(() => _publishEditedVideosToReels = value);
+                      },
+                    ),
+                ],
+              );
             },
           ),
           Expanded(
@@ -784,7 +806,9 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
   Future<void> _maybeCreateReelFromUploadedVideo({
     required FirebaseBookingDriveFileModel uploadedFile,
     required String fallbackContentType,
+    required bool shouldPublishToReels,
   }) async {
+    if (!shouldPublishToReels) return;
     final effectiveContentType = uploadedFile.mimeType.isNotEmpty
         ? uploadedFile.mimeType
         : fallbackContentType;
@@ -809,7 +833,7 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
         videoUrl: uploadedFile.downloadUrl,
         thumbnailUrl: uploadedFile.thumbnailUrl ?? '',
         duration: 0,
-        status: 'published',
+        status: 'delivered',
         metadata: ReelMetadata(
           editingStyle: 'standard',
           quality: '1080p',
@@ -817,11 +841,12 @@ class _BookingDriveScreenState extends State<BookingDriveScreen> {
           format: format,
         ),
         analytics: ReelAnalytics(),
-        isPublic: true,
+        isPublic: false,
+        moderationStatus: 'pending_review',
         isFeatured: false,
         createdAt: DateTime.now(),
         deliveredAt: DateTime.now(),
-        publishedAt: DateTime.now(),
+        publishedAt: null,
       );
       await _firestore.createReel(reel);
       debugPrint(

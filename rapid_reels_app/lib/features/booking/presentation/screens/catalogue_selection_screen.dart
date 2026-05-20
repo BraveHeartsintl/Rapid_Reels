@@ -153,7 +153,13 @@ class CatalogueSelectionScreen extends StatelessWidget {
           top: false,
           child: TextButton(
             onPressed: () => _skipToPackageFlow(context),
-            child: const Text('Skip offering and continue'),
+            child: const Text(
+              'Skip offering and continue',
+              style: TextStyle(
+                color: AppColors.secondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ),
       ),

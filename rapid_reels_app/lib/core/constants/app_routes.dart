@@ -61,6 +61,14 @@ class AppRoutes {
   static const String termsAndPrivacy = '/terms-privacy';
   static const String refundCancellationPolicy = '/refund-cancellation-policy';
 
+  /// Bundled markdown policies ([LegalMarkdownPolicyScreen](rapid_reels_app/lib/features/legal/presentation/screens/legal_markdown_policy_screen.dart)).
+  static const String legalDocuments = '/legal-documents';
+  static const String cookiePreferences = '/cookie-preferences';
+  static const String helpSupport = '/help-support';
+
+  static const String _legalBase = '/legal';
+  static String legalPolicy(String id) => '$_legalBase/$id';
+
   // Provider Routes
   /// Shell with bottom nav: `/provider-portal/:providerId/(home|schedule|bookings|earnings|account)`
   static const String providerPortal = '/provider-portal';
@@ -110,6 +118,8 @@ class AppRoutes {
   static const String adminProviderEarnings = '/admin-provider-earnings';
   static const String adminOffersManagement = '/admin-offers-management';
   static const String adminReviewsModeration = '/admin-reviews-moderation';
+  static const String adminContentReports = '/admin-content-reports';
+  static const String adminReelApproval = '/admin-reel-approval';
   static const String adminBookingDrive = '/admin-booking-drive';
 
   // Shared booking drive routes

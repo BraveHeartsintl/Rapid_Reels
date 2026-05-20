@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/discover/presentation/screens/main_discover_screen.dart';
+import 'ugc_community_gate.dart';
 import '../../features/my_events/presentation/screens/dynamic_my_events_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import 'rapid_bottom_nav_bar.dart';
@@ -20,7 +21,7 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const MainDiscoverScreen(),
+    const UgcCommunityGate(child: MainDiscoverScreen()),
     const DynamicMyEventsScreen(),
     const ProfileScreen(),
   ];

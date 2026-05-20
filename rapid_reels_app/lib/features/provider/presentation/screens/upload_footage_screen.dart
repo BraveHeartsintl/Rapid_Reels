@@ -570,7 +570,7 @@ class _UploadFootageScreenState extends State<UploadFootageScreen> {
             videoUrl: videoUrl,
             thumbnailUrl: videoUrl,
             duration: 0,
-            status: 'published',
+            status: 'delivered',
             metadata: ReelMetadata(
               editingStyle: 'standard',
               quality: '1080p',
@@ -579,11 +579,12 @@ class _UploadFootageScreenState extends State<UploadFootageScreen> {
             analytics: ReelAnalytics(),
             tags: tags.isNotEmpty ? tags : null,
             hashtags: null,
-            isPublic: true,
+            isPublic: false,
+            moderationStatus: 'pending_review',
             isFeatured: false,
             createdAt: DateTime.now(),
-            deliveredAt: null,
-            publishedAt: DateTime.now(),
+            deliveredAt: DateTime.now(),
+            publishedAt: null,
             editingDetails: null,
           );
 
@@ -626,7 +627,11 @@ class _UploadFootageScreenState extends State<UploadFootageScreen> {
         final allDone = _selectedReels.every((i) => i['status'] == 'completed');
         if (allDone) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Reels uploaded successfully!')),
+            const SnackBar(
+              content: Text(
+                'Reels uploaded. They will appear in discover after admin approval.',
+              ),
+            ),
           );
           Future.delayed(const Duration(seconds: 1), () {
             if (mounted) Navigator.pop(context);

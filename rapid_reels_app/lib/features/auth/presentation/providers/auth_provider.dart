@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../../core/admin/admin_route_cache.dart';
+import '../../../../core/session/guest_session_prefs.dart';
 import '../../../../core/router/router_refresh_notifier.dart';
 import '../../../../core/session/user_session_cleanup.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -35,6 +36,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   AuthNotifier(this._authRepository) : super(const AsyncValue.loading()) {
     _authRepository.authStateChanges.listen((user) {
       state = AsyncValue.data(user);
+      if (user != null) {
+        GuestSessionPrefs.clear();
+      }
     });
   }
 
@@ -132,6 +136,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   Future<void> signOut([WidgetRef? ref]) async {
     final uid = _authRepository.currentUser?.uid;
     await _authRepository.signOut();
+    await GuestSessionPrefs.clear();
     state = const AsyncValue.data(null);
     AdminRouteCache.invalidate();
     appRouterAuthRefresh.refresh();

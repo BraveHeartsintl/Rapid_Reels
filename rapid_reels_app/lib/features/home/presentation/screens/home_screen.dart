@@ -9,10 +9,12 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../../../../core/auth/auth_guard.dart';
 import '../../../../core/constants/app_cities.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../../core/legal/ugc_community_prefs.dart';
 import '../../../../core/firebase/services/firestore_service.dart';
 import '../../../../core/firebase/models/firebase_offer_model.dart';
 import '../../../../core/firebase/models/firebase_provider_model.dart';
@@ -80,6 +82,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   List<FirebaseProviderModel> _featuredProviders = [];
   bool _isLoadingProviders = false;
   List<FirebaseReelModel> _trendingReels = [];
+  bool _ugcTermsAccepted = false;
   final Map<String, bool> _likedReels = {};
   final ScrollController _trendingScrollController = ScrollController();
   /// Trending strip: videos play only after explicit tap.
@@ -106,9 +109,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     // Get location first, then load saved city as fallback
     _getCurrentLocation();
     _loadFeaturedProviders();
-    _loadTrendingReels();
     _loadHomeBanners();
     _loadPromoPopupOffer();
+    _bootstrapUgcAndReels();
+  }
+
+  Future<void> _bootstrapUgcAndReels() async {
+    await _loadUgcGate();
+    await _loadTrendingReels();
   }
 
   @override
@@ -180,9 +188,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return description;
   }
 
+  Future<void> _loadUgcGate() async {
+    final ok = await UgcCommunityPrefs.hasAccepted();
+    if (mounted) setState(() => _ugcTermsAccepted = ok);
+  }
+
   Future<void> _loadTrendingReels() async {
+    if (!_ugcTermsAccepted) {
+      if (mounted) setState(() => _trendingReels = []);
+      return;
+    }
     try {
-      final reels = await _firestoreService.getDiscoverReels(limit: 10);
+      final reels = await _firestoreService.getFeaturedReels(limit: 4);
       if (!mounted) return;
       final uid = ref.read(currentUserProvider)?.uid;
       setState(() {
@@ -894,7 +911,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
 
-            // Trending Reels Section - Refined
+            // Featured Reels Section - Admin curated (UGC terms required)
             SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -913,34 +930,75 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             letterSpacing: -0.5,
                           ),
                         ),
-                        TextButton(
-                          onPressed: () =>
-                              context.push('${AppRoutes.discover}/trending'),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                        if (_ugcTermsAccepted)
+                          TextButton(
+                            onPressed: () =>
+                                context.push(AppRoutes.discover),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                            ),
+                            child: _buildGradientViewAllText(),
                           ),
-                          child: _buildGradientViewAllText(),
-                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-                  SizedBox(
-                    height: 180,
-                    child: ListView.builder(
-                      controller: _trendingScrollController,
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: _trendingListHorizontalPad,
+                  if (!_ugcTermsAccepted)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Community guidelines',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Accept our Terms and Acceptable Use Policy to view portfolio reels.',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary
+                                      .withValues(alpha: 0.95),
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              FilledButton(
+                                onPressed: () async {
+                                  await context.push(AppRoutes.discover);
+                                  await _loadUgcGate();
+                                  await _loadTrendingReels();
+                                },
+                                child: const Text('Review & continue'),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      itemCount: _trendingReels.length,
-                      itemBuilder: (context, index) {
-                        final reel = _trendingReels[index];
-                        return _buildTrendingReelCard(reel, index);
-                      },
+                    )
+                  else
+                    SizedBox(
+                      height: 180,
+                      child: ListView.builder(
+                        controller: _trendingScrollController,
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: _trendingListHorizontalPad,
+                        ),
+                        itemCount: _trendingReels.length,
+                        itemBuilder: (context, index) {
+                          final reel = _trendingReels[index];
+                          return _buildTrendingReelCard(reel, index);
+                        },
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -2127,7 +2185,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  void _navigateToBooking(String eventType) {
+  Future<void> _navigateToBooking(String eventType) async {
+    final ok = await AuthGuard.requireAuth(
+      context,
+      message: 'Sign in to book an event with a reelmaker.',
+    );
+    if (!ok || !mounted) return;
+
     final eventTypeMap = {
       'Wedding': 'wedding',
       'Birthday': 'birthday',

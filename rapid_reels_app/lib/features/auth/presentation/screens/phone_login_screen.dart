@@ -3,12 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/utils/helpers.dart';
 import '../../../../shared/widgets/custom_button.dart';
+import '../../../../core/legal/ugc_community_prefs.dart';
+import '../../../../shared/widgets/signup_legal_consent_section.dart';
 import '../providers/auth_provider.dart';
 
 class PhoneLoginScreen extends ConsumerStatefulWidget {
@@ -19,12 +22,16 @@ class PhoneLoginScreen extends ConsumerStatefulWidget {
 }
 
 class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
+  static const _pendingMarketingKey = 'pending_signup_marketing';
+
   final TextEditingController _phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   String _selectedCountryCode = '+44';
   int _rateLimitSeconds = 0;
   Timer? _rateLimitTimer;
+  bool _agreeLegal = false;
+  bool _marketingOptIn = false;
 
   // Common country codes
   final List<Map<String, String>> _countryCodes = [
@@ -92,6 +99,16 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
       return;
     }
 
+    if (!_agreeLegal) {
+      Helpers.showSnackBar(
+        context,
+        'Please confirm you agree to the Terms, Privacy Policy, and Acceptable Use Policy.',
+        isError: true,
+      );
+      return;
+    }
+    await UgcCommunityPrefs.accept();
+
     // Check if rate limited
     if (_rateLimitSeconds > 0) {
       Helpers.showSnackBar(
@@ -107,6 +124,9 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
     String phoneNumber = '$_selectedCountryCode${_phoneController.text}';
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_pendingMarketingKey, _marketingOptIn);
+
       final verificationId = await ref
           .read(authNotifierProvider.notifier)
           .verifyPhone(phoneNumber);
@@ -167,6 +187,16 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
+    if (!_agreeLegal) {
+      Helpers.showSnackBar(
+        context,
+        'Please confirm you agree to the Terms, Privacy Policy, and Acceptable Use Policy.',
+        isError: true,
+      );
+      return;
+    }
+    await UgcCommunityPrefs.accept();
+
     setState(() => _isLoading = true);
 
     try {
@@ -178,9 +208,14 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
         // Check if user profile exists
         final user = ref.read(currentUserProvider);
         if (user != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool(_pendingMarketingKey, _marketingOptIn);
+
           final profileExists = await ref
               .read(authNotifierProvider.notifier)
               .userProfileExists(user.uid);
+
+          if (!mounted) return;
 
           if (profileExists) {
             context.go(AppRoutes.home);
@@ -350,7 +385,15 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+
+                SignupLegalConsentSection(
+                  agreeLegal: _agreeLegal,
+                  onAgreeLegal: (v) => setState(() => _agreeLegal = v),
+                  marketingOptIn: _marketingOptIn,
+                  onMarketingOptIn: (v) => setState(() => _marketingOptIn = v),
+                ),
+                const SizedBox(height: 24),
 
                 // Send OTP Button
                 CustomButton(
@@ -416,17 +459,6 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                     icon: const Icon(Icons.g_mobiledata, size: 32),
                     label: const Text('Continue with Google'),
                   ),
-                ),
-                const SizedBox(height: 40),
-
-                // Terms and Privacy
-                Text(
-                  'By continuing, you agree to our Terms of Service and Privacy Policy',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textTertiary,
-                  ),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
                 TextButton(

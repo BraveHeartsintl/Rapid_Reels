@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_routes.dart';
+import '../../../../core/legal/legal_policy_catalog.dart';
 import '../../../../core/firebase/models/firebase_admin_model.dart';
 import '../../../../core/firebase/services/firestore_service.dart';
 import 'package:uuid/uuid.dart';
@@ -90,6 +93,51 @@ class _SupportScreenState extends State<SupportScreen> {
                         ),
                       ),
                     ],
+                  ),
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Policies & FAQs',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    elevation: 0,
+                    color: AppColors.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.quiz_outlined),
+                          title: const Text('FAQ library'),
+                          subtitle: const Text('Browse common questions'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => context.push(AppRoutes.helpSupport),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.feedback_outlined),
+                          title: const Text('Complaints policy'),
+                          subtitle: const Text('How to raise and escalate a complaint'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => context.push(
+                            AppRoutes.legalPolicy(LegalPolicyIds.complaints),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

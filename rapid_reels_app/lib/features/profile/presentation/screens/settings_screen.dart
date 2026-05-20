@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../../core/legal/cookie_consent_platform.dart';
 
-class SettingsScreen extends StatefulWidget {
+/// App settings entry: legal hub and cookie preferences (UK legal pack).
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,7 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
                   child: Text(
-                    'PRIVACY',
+                    'LEGAL & PRIVACY',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -47,16 +44,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 ListTile(
-                  title: const Text('Privacy Policy'),
+                  leading: const Icon(Icons.library_books_outlined),
+                  title: const Text('Legal documents'),
+                  subtitle: const Text(
+                    'Terms, privacy, refunds, cookies, and more',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push(AppRoutes.refundCancellationPolicy),
+                  onTap: () => context.push(AppRoutes.legalDocuments),
                 ),
-                const Divider(height: 1),
-                ListTile(
-                  title: const Text('Refund & Cancellation Policy'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push(AppRoutes.refundCancellationPolicy),
-                ),
+                if (kShowsCookieConsentUi) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.cookie_outlined),
+                    title: const Text('Cookie preferences'),
+                    subtitle: const Text('Analytics and marketing choices'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(AppRoutes.cookiePreferences),
+                  ),
+                ],
                 const Divider(height: 1),
               ],
             ),
@@ -66,4 +71,3 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
-

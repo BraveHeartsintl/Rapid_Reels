@@ -484,7 +484,6 @@ class _ProviderMyReelsScreenState extends State<ProviderMyReelsScreen> {
     final titleController = TextEditingController(text: reel.title);
     final tagsController = TextEditingController(text: (reel.tags ?? []).join(', '));
     var eventType = reel.eventType;
-    var isPublic = reel.isPublic;
 
     showModalBottomSheet(
       context: context,
@@ -519,10 +518,16 @@ class _ProviderMyReelsScreenState extends State<ProviderMyReelsScreen> {
                 onChanged: (v) => eventType = v ?? eventType,
               ),
               const SizedBox(height: 16),
-              SwitchListTile(
-                title: const Text('Public (show in discover)'),
-                value: isPublic,
-                onChanged: (v) => isPublic = v,
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Discover visibility'),
+                subtitle: Text(
+                  reel.moderationStatus == 'approved'
+                      ? 'Approved — visible in public discover'
+                      : reel.moderationStatus == 'rejected'
+                          ? 'Rejected by moderation'
+                          : 'Pending admin review before appearing in discover',
+                ),
               ),
               const SizedBox(height: 24),
               ProviderGradientButton(
@@ -533,7 +538,6 @@ class _ProviderMyReelsScreenState extends State<ProviderMyReelsScreen> {
                       'title': titleController.text.trim(),
                       'tags': tags,
                       'eventType': eventType,
-                      'isPublic': isPublic,
                       'eventName': titleController.text.trim().isNotEmpty ? titleController.text.trim() : eventType,
                     });
                     if (context.mounted) Navigator.pop(context);

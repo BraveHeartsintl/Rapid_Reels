@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../shared/widgets/firebase_storage_image.dart';
+import '../../../../shared/widgets/guest_sign_in_prompt.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 import '../../../../core/theme/text_styles.dart';
@@ -18,13 +19,15 @@ class ProfileScreen extends ConsumerWidget {
     // Get current logged-in user from Firebase Auth
     final currentUser = ref.watch(currentUserProvider);
     
-    // If no user is logged in, show loading or redirect to login
     if (currentUser == null) {
       return Scaffold(
         backgroundColor: AppColors.background,
-        body: const Center(
-          child: CircularProgressIndicator(),
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          title: Text('Profile', style: AppTypography.titleLarge),
         ),
+        body: const GuestProfileBody(),
       );
     }
 
@@ -259,10 +262,10 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                           _buildMenuItem(
                             icon: Icons.policy_outlined,
-                            title: 'Refund & Cancellation Policy',
-                            subtitle: 'Read refund and cancellation clauses',
+                            title: 'Legal & policies',
+                            subtitle: 'Terms, privacy, refunds, and cookies',
                             onTap: () =>
-                                context.push(AppRoutes.refundCancellationPolicy),
+                                context.push(AppRoutes.legalDocuments),
                           ),
                           _buildMenuItem(
                             icon: Icons.info,
@@ -538,7 +541,10 @@ class ProfileScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.secondary),
+            ),
           ),
           TextButton(
             onPressed: () async {
