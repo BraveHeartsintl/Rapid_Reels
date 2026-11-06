@@ -15,10 +15,14 @@ export function MarketingNav() {
     <header className="absolute inset-x-0 top-0 z-40">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
         <Link href="/" className="flex items-center gap-3">
-          <Image src="/logo.png" alt="Rapid Reels" width={44} height={44} className="rounded-xl" />
-          <span className="text-lg font-semibold tracking-tight text-white">
-            Rapid <span className="text-[var(--rr-secondary)]">Reels</span>
-          </span>
+          <Image
+            src="/logo.png"
+            alt="Rapid Reels"
+            width={140}
+            height={78}
+            className="h-11 w-auto object-contain"
+            priority
+          />
         </Link>
         <nav className="hidden items-center gap-6 md:flex">
           {links.map((l) => (
@@ -50,8 +54,13 @@ export function MarketingFooter() {
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-4">
         <div className="md:col-span-2">
           <div className="mb-3 flex items-center gap-3">
-            <Image src="/logo.png" alt="" width={36} height={36} className="rounded-lg" />
-            <span className="font-semibold text-white">Rapid Reels</span>
+            <Image
+              src="/logo.png"
+              alt="Rapid Reels"
+              width={120}
+              height={67}
+              className="h-9 w-auto object-contain"
+            />
           </div>
           <p className="max-w-sm text-sm text-[var(--rr-text-secondary)]">
             Book verified event videographers. Get social-ready reels in minutes — not months.

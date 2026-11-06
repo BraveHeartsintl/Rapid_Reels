@@ -16,14 +16,12 @@ export default function HomePage() {
           <Image
             src="/logo.png"
             alt="Rapid Reels"
-            width={96}
-            height={96}
+            width={320}
+            height={179}
             priority
-            className="mb-6 rounded-3xl shadow-[0_20px_60px_rgba(106,0,255,0.45)]"
+            className="mb-6 h-auto w-56 object-contain sm:w-72"
           />
-          <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-6xl">
-            Rapid Reels
-          </h1>
+          <h1 className="sr-only">Rapid Reels</h1>
           <p className="mt-4 max-w-xl text-lg text-[var(--rr-text-secondary)] sm:text-xl">
             Event reels in minutes — book verified creators and share while the moment is still live.
           </p>
