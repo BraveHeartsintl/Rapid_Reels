@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+:root {
+  --rr-bg: #141a1d;
+  --rr-primary: #6a00ff;
+  --rr-secondary: #00d4ff;
+  --rr-primary-dark: #4b00c8;
+  --rr-surface: #1d2529;
+  --rr-card: #232d31;
+  --rr-surface-elevated: #2a353a;
+  --rr-text: #ffffff;
+  --rr-text-secondary: #d2d2d1;
+  --rr-text-tertiary: #8d8e91;
+  --rr-success: #4ade80;
+  --rr-warning: #f2b544;
+  --rr-error: #e57373;
+  --rr-outline: #3d484c;
+  --background: var(--rr-bg);
+  --foreground: var(--rr-text);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--rr-bg);
+  color: var(--rr-text);
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.7s ease both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease both;
+}
+
+.hero-glow {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 20%, rgba(106, 0, 255, 0.35), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 60%, rgba(0, 212, 255, 0.18), transparent 55%),
+    linear-gradient(180deg, #141a1d 0%, #1a101f 45%, #141a1d 100%);
+}
