@@ -48,6 +48,10 @@ export function generateReferralCode(name: string): string {
 const AUTH_MESSAGES: Record<string, string> = {
   "auth/invalid-app-credential":
     "Phone verification was rejected (reCAPTCHA / app credential check failed). Refresh the page and try again, use a normal browser on http://localhost, or try a Firebase test phone number.",
+  "auth/captcha-check-failed":
+    "This website's domain is not authorized in Firebase. Add it under Firebase Authentication → Settings → Authorized domains.",
+  "auth/unauthorized-domain":
+    "This website's domain is not authorized in Firebase. Add it under Firebase Authentication → Settings → Authorized domains.",
   "auth/operation-not-allowed":
     "SMS to this country is not enabled. Enable it under Firebase Authentication → Settings → SMS region policy.",
   "auth/invalid-phone-number": "That phone number is not valid. Check the country and number.",
