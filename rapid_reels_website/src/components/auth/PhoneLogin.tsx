@@ -53,8 +53,8 @@ export function PhoneLogin({ role, children }: { role: LoginRole; children?: Rea
             onChange={(e) => setCountry(e.target.value)}
             className="rounded-2xl border border-[var(--rr-outline)] bg-[var(--rr-surface)] px-3 py-3 text-[var(--rr-text)] outline-none focus:border-[var(--rr-primary)]"
           >
-            <option value="+44">???? +44</option>
-            <option value="+91">???? +91</option>
+            <option value="+44">UK +44</option>
+            <option value="+91">India +91</option>
           </select>
         </label>
         <Input

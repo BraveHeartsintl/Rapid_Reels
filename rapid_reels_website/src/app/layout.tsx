@@ -13,7 +13,7 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: {
     default: "Rapid Reels",
-    template: "%s · Rapid Reels",
+    template: "%s | Rapid Reels",
   },
   description:
     "Book verified event videographers and get social-ready reels fast.",
