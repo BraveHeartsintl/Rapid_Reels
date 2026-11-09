@@ -1,26 +1,21 @@
+"use client";
+
 import { FlowScreen } from "@/components/layout/FlowScreen";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 
 export default function Page() {
   return (
-    <FlowScreen
-      title="Documents"
-      subtitle="Static provider flow demo"
-      backHref="/provider-portal/demo/account"
-      nextHref="/provider-availability-calendar"
-      nextLabel="Continue"
-    >
+    <FlowScreen title="Documents" subtitle="Identity documents are handled by our verification partner" backHref="/provider-verification">
       <div className="space-y-4">
-        <Card>
-          <p className="text-sm text-[var(--rr-text-secondary)]">
-            Documents screen with mock controls. No uploads or API calls in this phase.
+        <Card className="space-y-2 text-sm text-[var(--rr-text-secondary)]">
+          <p>
+            For security, ID documents are no longer uploaded to Rapid Reels directly. Veriff captures your government ID and a selfie and
+            sends the verified result to our team.
           </p>
+          <p>Have a valid passport or driving licence ready, and make sure you are in a well-lit place.</p>
         </Card>
-        <Input label="Notes" placeholder="Optional notes for this step" />
-        <label className="flex items-center gap-3 rounded-2xl border border-[var(--rr-outline)]/50 bg-[var(--rr-card)] p-4 text-sm text-white">
-          <input type="checkbox" className="accent-[var(--rr-primary)]" defaultChecked /> Mark step complete
-        </label>
+        <Button href="/provider-verification" className="w-full">Go to identity verification</Button>
       </div>
     </FlowScreen>
   );

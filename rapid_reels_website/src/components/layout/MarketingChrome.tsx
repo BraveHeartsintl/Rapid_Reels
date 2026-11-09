@@ -118,7 +118,7 @@ export function MarketingFooter() {
         </div>
       </div>
       <div className="border-t border-[var(--rr-outline)]/40 py-4 text-center text-xs text-[var(--rr-text-tertiary)]">
-        © 2026 Rapid Reels. Static demo website — Flutter app unchanged.
+        © 2026 Rapid Reels. All rights reserved.
       </div>
     </footer>
   );

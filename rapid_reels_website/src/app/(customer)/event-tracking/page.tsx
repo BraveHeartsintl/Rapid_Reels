@@ -1,18 +1,24 @@
+"use client";
+
 import { PageHeader } from "@/components/layout/FlowScreen";
-import { mockTimeline } from "@/lib/mock";
+import { StatusTimeline } from "@/components/booking/StatusTimeline";
+import { AsyncView, Empty } from "@/components/ui/State";
+import { getBooking } from "@/lib/data/queries";
+import { useAsync, useQuery } from "@/lib/hooks";
 
 export default function Page() {
+  const query = useQuery();
+  const id = query.get("id");
+  const state = useAsync(() => getBooking(id!), [id], query.ready && Boolean(id));
+
+  if (query.ready && !id) return <Empty>No event selected.</Empty>;
+
   return (
     <div>
       <PageHeader title="Event timeline" />
-      <ol className="space-y-4">
-        {mockTimeline.map((t) => (
-          <li key={t.time} className="flex gap-4">
-            <span className="w-12 text-xs text-[var(--rr-secondary)]">{t.time}</span>
-            <span className={t.done ? "text-[var(--rr-text-tertiary)] line-through" : "text-white"}>{t.label}</span>
-          </li>
-        ))}
-      </ol>
+      <AsyncView state={state} empty="This event could not be found." isEmpty={(d) => d === null}>
+        {(b) => (b ? <StatusTimeline booking={b} /> : null)}
+      </AsyncView>
     </div>
   );
 }

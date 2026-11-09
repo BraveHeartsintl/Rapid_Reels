@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { MarketingFooter, MarketingNav } from "@/components/layout/MarketingChrome";
 import { Button } from "@/components/ui/Button";
-import { eventTypes } from "@/lib/mock";
+import { EVENT_TYPES as eventTypes } from "@/lib/format";
 
 export default function HomePage() {
   return (
@@ -90,17 +90,17 @@ export default function HomePage() {
 
       <section className="px-4 py-20 text-center sm:px-6">
         <div className="mx-auto max-w-3xl">
-          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Try the full static product flow</h2>
+          <h2 className="text-2xl font-semibold text-white sm:text-3xl">Get started on the web</h2>
           <p className="mt-3 text-[var(--rr-text-secondary)]">
-            Walk through customer booking, provider portal, and admin console — mock data only, no backend.
+            Book an event as a customer, manage your studio as a provider, or run the platform as an admin. Sign in with your phone number.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button href="/login">Customer demo</Button>
+            <Button href="/login">Customer sign in</Button>
             <Button href="/provider/login" variant="outline">
-              Provider demo
+              Provider sign in
             </Button>
             <Button href="/admin/login" variant="secondary">
-              Admin demo
+              Admin sign in
             </Button>
           </div>
         </div>

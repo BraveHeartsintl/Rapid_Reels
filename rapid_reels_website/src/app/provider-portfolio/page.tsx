@@ -1,32 +1,37 @@
-import { FlowScreen } from "@/components/layout/FlowScreen";
-import { mockReels } from "@/lib/mock";
-import { Card } from "@/components/ui/Card";
+"use client";
 
-function Inner() {
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      {mockReels.map((r) => (
-        <Card
-          key={r.id}
-          className="flex aspect-square items-end bg-gradient-to-br from-[var(--rr-primary)]/30 to-[var(--rr-card)] p-3"
-        >
-          <span className="text-xs text-white">{r.title}</span>
-        </Card>
-      ))}
-    </div>
-  );
-}
+import { FlowScreen } from "@/components/layout/FlowScreen";
+import { ReelTile } from "@/components/reel/ReelTile";
+import { AsyncView, Empty } from "@/components/ui/State";
+import { useProviderId } from "@/lib/booking/useProviderId";
+import { listProviderPublicReels } from "@/lib/data/queries";
+import { useAsync } from "@/lib/hooks";
 
 export default function Page() {
+  const { ready, providerId } = useProviderId();
+  const state = useAsync(() => listProviderPublicReels(providerId!), [providerId], ready && Boolean(providerId));
+
   return (
     <FlowScreen
       title="Portfolio"
       subtitle="Sample work from this provider"
-      backHref="/provider-details"
-      nextHref="/catalogue-selection"
-      nextLabel="Continue"
+      backHref={providerId ? `/provider-details?id=${providerId}` : "/provider-selection"}
+      nextHref={providerId ? `/catalogue-selection?id=${providerId}` : undefined}
+      nextLabel="Continue to booking"
     >
-      <Inner />
+      {ready && !providerId ? (
+        <Empty>No provider selected.</Empty>
+      ) : (
+        <AsyncView state={state} empty="This provider has no published reels yet.">
+          {(reels) => (
+            <div className="grid grid-cols-2 gap-3">
+              {reels.map((r) => (
+                <ReelTile key={r.id} reel={r} href={`/reel-player?id=${r.id}`} showStats />
+              ))}
+            </div>
+          )}
+        </AsyncView>
+      )}
     </FlowScreen>
   );
 }

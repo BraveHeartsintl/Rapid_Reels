@@ -1,13 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 
 const links = [
-  ["/provider-business-profile", "Business profile"],
-  ["/provider-portfolio-upload", "Portfolio"],
+  ["/provider-dashboard", "Dashboard"],
+  ["/provider-business-profile", "Business profile & packages"],
+  ["/provider-portfolio-upload", "Deliver a reel"],
   ["/provider-service-areas", "Service areas"],
   ["/provider-availability-calendar", "Availability"],
   ["/provider-catalogue", "Catalogue"],
   ["/provider-verification", "Verification"],
   ["/provider-document-upload", "Documents"],
+  ["/provider-bank-details", "Bank details"],
   ["/provider-my-reels", "My reels"],
 ];
 
@@ -22,6 +27,7 @@ export default function Page() {
           </Link>
         ))}
       </div>
+      <SignOutButton className="mt-6" />
     </div>
   );
 }

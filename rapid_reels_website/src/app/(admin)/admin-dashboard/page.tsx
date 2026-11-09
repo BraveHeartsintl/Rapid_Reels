@@ -1,36 +1,45 @@
-import { Card } from "@/components/ui/Card";
-import { mockAdminStats } from "@/lib/mock";
-import Link from "next/link";
+"use client";
 
-const tiles: Array<{ label: string; value: string | number; href: string }> = [
-  { label: "Users", value: mockAdminStats.users, href: "/admin-user-management" },
-  { label: "Providers", value: mockAdminStats.providers, href: "/admin-provider-verification" },
-  { label: "Bookings", value: mockAdminStats.bookings, href: "/admin-booking-management" },
-  { label: "Reels", value: mockAdminStats.reels, href: "/admin-reel-approval" },
-  { label: "Revenue", value: mockAdminStats.revenue, href: "/admin-payment-management" },
-  {
-    label: "Pending verify",
-    value: mockAdminStats.pendingVerifications,
-    href: "/admin-provider-verification",
-  },
-  { label: "Flagged", value: mockAdminStats.flaggedContent, href: "/admin-content-reports" },
-];
+import Link from "next/link";
+import { PageHeader } from "@/components/layout/FlowScreen";
+import { Card } from "@/components/ui/Card";
+import { AsyncView } from "@/components/ui/State";
+import { getAdminStats } from "@/lib/data/queries";
+import { fmtMoney } from "@/lib/format";
+import { useAsync } from "@/lib/hooks";
 
 export default function Page() {
+  const state = useAsync(getAdminStats, []);
+
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-white">Admin dashboard</h1>
-      <p className="mt-1 text-sm text-[var(--rr-text-secondary)]">Platform overview (mock)</p>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {tiles.map((tile) => (
-          <Link key={tile.label} href={tile.href}>
-            <Card>
-              <p className="text-xs text-[var(--rr-text-tertiary)]">{tile.label}</p>
-              <p className="mt-2 text-2xl font-bold text-white">{tile.value}</p>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      <PageHeader title="Admin dashboard" subtitle="Live platform overview" />
+      <AsyncView state={state} isEmpty={() => false}>
+        {(s) => {
+          const tiles: Array<{ label: string; value: string | number; href: string; alert?: boolean }> = [
+            { label: "Users", value: s.users, href: "/admin-user-management" },
+            { label: "Providers", value: s.providers, href: "/admin-provider-verification" },
+            { label: "Bookings", value: s.bookings, href: "/admin-booking-management" },
+            { label: "Reels", value: s.reels, href: "/admin-reel-approval" },
+            { label: "Revenue", value: fmtMoney(s.revenue), href: "/admin-payment-management" },
+            { label: "Pending verification", value: s.pendingVerifications, href: "/admin-provider-verification", alert: s.pendingVerifications > 0 },
+            { label: "Reels to review", value: s.pendingReels, href: "/admin-reel-approval", alert: s.pendingReels > 0 },
+            { label: "Open reports", value: s.openReports, href: "/admin-content-reports", alert: s.openReports > 0 },
+          ];
+          return (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {tiles.map((t) => (
+                <Link key={t.label} href={t.href}>
+                  <Card className={t.alert ? "border-[var(--rr-warning)]/60" : undefined}>
+                    <p className="text-xs text-[var(--rr-text-tertiary)]">{t.label}</p>
+                    <p className="mt-2 text-2xl font-bold text-white">{t.value}</p>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          );
+        }}
+      </AsyncView>
     </div>
   );
 }

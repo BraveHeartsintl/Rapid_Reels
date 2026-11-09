@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -42,12 +43,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
+        <SignOutButton className="mt-6 px-3 text-left" />
       </aside>
       <div className="flex-1">
         <header className="border-b border-[var(--rr-outline)]/40 px-4 py-3 lg:hidden">
-          <p className="text-sm font-semibold text-white">Admin</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-white">Admin</p>
+            <SignOutButton className="text-xs" />
+          </div>
           <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-            {links.slice(0, 6).map((l) => (
+            {links.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}

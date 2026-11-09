@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -22,9 +23,12 @@ export function ProviderShell({ children }: { children: React.ReactNode }) {
           <Link href="/provider-portal/demo/home" className="font-semibold text-white">
             Provider Portal
           </Link>
-          <Link href="/" className="text-xs text-[var(--rr-text-tertiary)] hover:text-white">
-            Marketing site
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="text-xs text-[var(--rr-text-tertiary)] hover:text-white">
+              Marketing site
+            </Link>
+            <SignOutButton className="text-xs" />
+          </div>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-2 pb-2">
           {tabs.map((t) => (

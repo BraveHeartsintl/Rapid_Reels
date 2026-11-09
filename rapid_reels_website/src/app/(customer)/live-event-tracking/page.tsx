@@ -1,19 +1,33 @@
+"use client";
+
 import { PageHeader } from "@/components/layout/FlowScreen";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Card";
+import { LiveEventView } from "@/components/booking/LiveEventView";
+import { AsyncView, Empty } from "@/components/ui/State";
+import { useUid } from "@/lib/auth/useUid";
+import { listCustomerBookings } from "@/lib/data/queries";
+import { useAsync, useQuery } from "@/lib/hooks";
 
 export default function Page() {
+  const query = useQuery();
+  const uid = useUid();
+  const id = query.get("id");
+  // No id in the URL: follow the customer's currently ongoing event.
+  const ongoing = useAsync(
+    async () => (await listCustomerBookings(uid!)).find((b) => b.status === "ongoing")?.id ?? null,
+    [uid],
+    query.ready && !id && Boolean(uid),
+  );
+
   return (
     <div>
-      <PageHeader title="Live event" action={<Badge tone="warning">LIVE</Badge>} />
-      <Card className="mb-4">
-        <p className="text-sm text-[var(--rr-text-secondary)]">Crew on site</p>
-        <p className="mt-2 text-white">Lens & Light Studio · 2 shooters</p>
-      </Card>
-      <Card>
-        <p className="text-sm text-white">Latest reel delivered 12 min ago</p>
-        <a href="/reel-player" className="mt-3 inline-block text-sm text-[var(--rr-secondary)]">Watch →</a>
-      </Card>
+      <PageHeader title="Live event" subtitle="Real-time coverage updates" />
+      {id ? (
+        <LiveEventView bookingId={id} />
+      ) : (
+        <AsyncView state={ongoing} empty="No event is live right now." isEmpty={(d) => d === null}>
+          {(bookingId) => (bookingId ? <LiveEventView bookingId={bookingId} /> : <Empty>No event is live right now.</Empty>)}
+        </AsyncView>
+      )}
     </div>
   );
 }

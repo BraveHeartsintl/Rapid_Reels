@@ -1,27 +1,20 @@
+"use client";
+
 import { FlowScreen } from "@/components/layout/FlowScreen";
-import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
+import { DriveManager } from "@/components/booking/DriveManager";
+import { BookingPicker } from "@/components/provider/BookingPicker";
+import { useQuery } from "@/lib/hooks";
 
 export default function Page() {
+  const query = useQuery();
+  const id = query.get("id");
   return (
-    <FlowScreen
-      title="Booking drive"
-      subtitle="Static provider flow demo"
-      backHref="/provider-portal/demo/account"
-      nextHref="/provider-portal/demo/bookings"
-      nextLabel="Continue"
-    >
-      <div className="space-y-4">
-        <Card>
-          <p className="text-sm text-[var(--rr-text-secondary)]">
-            Booking drive screen with mock controls. No uploads or API calls in this phase.
-          </p>
-        </Card>
-        <Input label="Notes" placeholder="Optional notes for this step" />
-        <label className="flex items-center gap-3 rounded-2xl border border-[var(--rr-outline)]/50 bg-[var(--rr-card)] p-4 text-sm text-white">
-          <input type="checkbox" className="accent-[var(--rr-primary)]" defaultChecked /> Mark step complete
-        </label>
-      </div>
+    <FlowScreen title="Booking drive" subtitle="Raw footage for this booking" backHref={id ? `/provider-booking-status?id=${id}` : "/provider-dashboard"}>
+      {!query.ready ? null : id ? (
+        <DriveManager bookingId={id} />
+      ) : (
+        <BookingPicker hrefFor={(b) => `/provider-booking-drive?id=${b}`} />
+      )}
     </FlowScreen>
   );
 }

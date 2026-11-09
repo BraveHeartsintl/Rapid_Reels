@@ -11,7 +11,7 @@ export default function DownloadPage() {
         <div className="mx-auto max-w-2xl text-center animate-fade-up">
           <h1 className="text-4xl font-bold text-white">Get the app</h1>
           <p className="mt-4 text-[var(--rr-text-secondary)]">
-            Rapid Reels ships on iOS and Android. Store links are placeholders in this static demo.
+            Rapid Reels is available on iOS and Android. Store links will appear here once the apps are live.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <Button href="#" variant="primary">
@@ -22,9 +22,9 @@ export default function DownloadPage() {
             </Button>
           </div>
           <p className="mt-8 text-sm text-[var(--rr-text-tertiary)]">
-            Or explore the{" "}
+            Or book on the{" "}
             <a href="/home" className="text-[var(--rr-secondary)] underline">
-              web customer demo
+              web app
             </a>
             .
           </p>

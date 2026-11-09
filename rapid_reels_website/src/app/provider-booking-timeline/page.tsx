@@ -1,27 +1,37 @@
+"use client";
+
 import { FlowScreen } from "@/components/layout/FlowScreen";
+import { StatusTimeline } from "@/components/booking/StatusTimeline";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
+import { AsyncView, Empty } from "@/components/ui/State";
+import { getBooking } from "@/lib/data/queries";
+import { fmtDate } from "@/lib/format";
+import { useAsync, useQuery } from "@/lib/hooks";
 
 export default function Page() {
+  const query = useQuery();
+  const id = query.get("id");
+  const state = useAsync(() => getBooking(id!), [id], query.ready && Boolean(id));
+
   return (
-    <FlowScreen
-      title="Booking timeline"
-      subtitle="Static provider flow demo"
-      backHref="/provider-portal/demo/account"
-      nextHref="/provider-customer-contact"
-      nextLabel="Continue"
-    >
-      <div className="space-y-4">
-        <Card>
-          <p className="text-sm text-[var(--rr-text-secondary)]">
-            Booking timeline screen with mock controls. No uploads or API calls in this phase.
-          </p>
-        </Card>
-        <Input label="Notes" placeholder="Optional notes for this step" />
-        <label className="flex items-center gap-3 rounded-2xl border border-[var(--rr-outline)]/50 bg-[var(--rr-card)] p-4 text-sm text-white">
-          <input type="checkbox" className="accent-[var(--rr-primary)]" defaultChecked /> Mark step complete
-        </label>
-      </div>
+    <FlowScreen title="Booking timeline" subtitle="Progress of this booking" backHref={id ? `/provider-booking-status?id=${id}` : "/provider-bookings"}>
+      {query.ready && !id ? (
+        <Empty>No booking selected. <a href="/provider-bookings" className="underline">All bookings</a></Empty>
+      ) : (
+        <AsyncView state={state} empty="Booking not found." isEmpty={(d) => d === null}>
+          {(b) =>
+            b ? (
+              <div className="space-y-4">
+                <Card className="text-sm">
+                  <p className="font-medium text-white">{b.eventName}</p>
+                  <p className="text-xs text-[var(--rr-text-tertiary)]">{fmtDate(b.eventDate)} {b.eventTime}</p>
+                </Card>
+                <StatusTimeline booking={b} />
+              </div>
+            ) : null
+          }
+        </AsyncView>
+      )}
     </FlowScreen>
   );
 }

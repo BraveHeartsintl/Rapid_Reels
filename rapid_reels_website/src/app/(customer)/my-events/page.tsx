@@ -1,58 +1,60 @@
-import Link from "next/link";
+"use client";
+
+import { useState } from "react";
 import { PageHeader } from "@/components/layout/FlowScreen";
-import { Badge, Card } from "@/components/ui/Card";
-import { mockBookings } from "@/lib/mock";
+import { BookingCard } from "@/components/booking/BookingCard";
+import { AsyncView } from "@/components/ui/State";
+import { useUid } from "@/lib/auth/useUid";
+import { listCustomerBookings } from "@/lib/data/queries";
+import { useAsync } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
-export const metadata = { title: "My Events" };
-
-const filters = ["All", "Upcoming", "Ongoing", "Completed", "Cancelled"];
+const FILTERS = [
+  { id: "all", label: "All", match: () => true },
+  { id: "upcoming", label: "Upcoming", match: (s?: string) => s === "pending" || s === "confirmed" },
+  { id: "ongoing", label: "Ongoing", match: (s?: string) => s === "ongoing" },
+  { id: "completed", label: "Completed", match: (s?: string) => s === "completed" },
+  { id: "cancelled", label: "Cancelled", match: (s?: string) => s === "cancelled" },
+];
 
 export default function MyEventsPage() {
+  const uid = useUid();
+  const [filter, setFilter] = useState("all");
+  const state = useAsync(() => listCustomerBookings(uid!), [uid], Boolean(uid));
+  const active = FILTERS.find((f) => f.id === filter) ?? FILTERS[0];
+
   return (
     <div>
       <PageHeader title="My Events" subtitle="Track bookings end to end" />
       <div className="mb-4 flex gap-2 overflow-x-auto">
-        {filters.map((f, i) => (
-          <span
-            key={f}
-            className={`shrink-0 rounded-full px-3 py-1 text-xs ${
-              i === 0
-                ? "bg-[var(--rr-primary)] text-white"
-                : "bg-[var(--rr-card)] text-[var(--rr-text-tertiary)]"
-            }`}
+        {FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setFilter(f.id)}
+            className={cn(
+              "shrink-0 rounded-full px-3 py-1 text-xs",
+              filter === f.id ? "bg-[var(--rr-primary)] text-white" : "bg-[var(--rr-card)] text-[var(--rr-text-tertiary)]",
+            )}
           >
-            {f}
-          </span>
+            {f.label}
+          </button>
         ))}
       </div>
-      <div className="space-y-3">
-        {mockBookings.map((b) => (
-          <Link key={b.id} href={`/event-details-view?id=${b.id}`}>
-            <Card className="mb-3">
-              <div className="flex justify-between gap-2">
-                <div>
-                  <p className="font-medium text-white">{b.title}</p>
-                  <p className="mt-1 text-xs text-[var(--rr-text-tertiary)]">
-                    {b.type} · {b.date}
-                  </p>
-                  <p className="text-xs text-[var(--rr-text-secondary)]">{b.provider}</p>
-                </div>
-                <Badge
-                  tone={
-                    b.status === "completed"
-                      ? "success"
-                      : b.status === "ongoing"
-                        ? "warning"
-                        : "primary"
-                  }
-                >
-                  {b.status}
-                </Badge>
-              </div>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      <AsyncView state={state} empty="You have no bookings yet.">
+        {(rows) => {
+          const filtered = rows.filter((b) => active.match(b.status));
+          return filtered.length === 0 ? (
+            <p className="text-sm text-[var(--rr-text-tertiary)]">No events in this category.</p>
+          ) : (
+            <div>
+              {filtered.map((b) => (
+                <BookingCard key={b.id} booking={b} href={`/event-details-view?id=${b.id}`} />
+              ))}
+            </div>
+          );
+        }}
+      </AsyncView>
     </div>
   );
 }

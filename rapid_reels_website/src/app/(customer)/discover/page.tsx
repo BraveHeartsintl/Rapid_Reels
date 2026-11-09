@@ -1,36 +1,48 @@
-import Link from "next/link";
-import { PageHeader } from "@/components/layout/FlowScreen";
-import { Badge, Card } from "@/components/ui/Card";
-import { eventTypes, mockReels } from "@/lib/mock";
+"use client";
 
-export const metadata = { title: "Discover" };
+import { useState } from "react";
+import { PageHeader } from "@/components/layout/FlowScreen";
+import { ReelTile } from "@/components/reel/ReelTile";
+import { AsyncView } from "@/components/ui/State";
+import { listDiscoverReels } from "@/lib/data/queries";
+import { EVENT_TYPES } from "@/lib/format";
+import { useAsync } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
 export default function DiscoverPage() {
+  const [type, setType] = useState<string | undefined>(undefined);
+  const state = useAsync(() => listDiscoverReels(40, type), [type]);
+
+  const chip = (id: string | undefined, label: string) => (
+    <button
+      key={label}
+      type="button"
+      onClick={() => setType(id)}
+      className={cn(
+        "shrink-0 rounded-full px-3 py-1 text-xs font-medium",
+        type === id ? "bg-[var(--rr-primary)] text-white" : "bg-white/5 text-[var(--rr-text-tertiary)]",
+      )}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div>
       <PageHeader title="Discover" subtitle="Trending event reels" />
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-        <Badge tone="primary">All</Badge>
-        {eventTypes.map((e) => (
-          <Badge key={e.id} tone="muted">
-            {e.label}
-          </Badge>
-        ))}
+        {chip(undefined, "All")}
+        {EVENT_TYPES.map((e) => chip(e.id, e.label))}
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        {mockReels.map((r) => (
-          <Link key={r.id} href={`/reel-player?id=${r.id}`}>
-            <Card className="aspect-[9/14] overflow-hidden p-0">
-              <div className="flex h-full flex-col justify-end bg-gradient-to-br from-[var(--rr-primary)]/40 to-[var(--rr-surface)] p-3">
-                <p className="text-sm font-medium text-white">{r.title}</p>
-                <p className="text-[10px] text-[var(--rr-text-secondary)]">
-                  {r.author} · ♥ {r.likes}
-                </p>
-              </div>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      <AsyncView state={state} empty="No reels have been published for this category yet.">
+        {(reels) => (
+          <div className="grid grid-cols-2 gap-3">
+            {reels.map((r) => (
+              <ReelTile key={r.id} reel={r} href={`/reel-player?id=${r.id}`} showStats />
+            ))}
+          </div>
+        )}
+      </AsyncView>
     </div>
   );
 }

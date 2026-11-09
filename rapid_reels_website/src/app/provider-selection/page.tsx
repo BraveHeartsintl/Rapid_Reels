@@ -1,42 +1,44 @@
-import { FlowScreen } from "@/components/layout/FlowScreen";
-import { mockProviders } from "@/lib/mock";
-import Link from "next/link";
-import { Badge } from "@/components/ui/Card";
+"use client";
 
-function Inner() {
-  return (
-    <div className="space-y-3">
-      {mockProviders.map((p) => (
-        <Link
-          key={p.id}
-          href={"/provider-details?id=" + p.id}
-          className="block rounded-2xl border border-[var(--rr-outline)]/50 bg-[var(--rr-card)] p-4"
-        >
-          <div className="flex justify-between gap-2">
-            <div>
-              <p className="font-medium text-white">{p.name}</p>
-              <p className="text-xs text-[var(--rr-text-tertiary)]">
-                ★ {p.rating} · from {p.priceFrom}
-              </p>
-            </div>
-            {p.verified ? <Badge tone="success">Verified</Badge> : null}
-          </div>
-        </Link>
-      ))}
-    </div>
-  );
-}
+import { FlowScreen } from "@/components/layout/FlowScreen";
+import { ProviderCard } from "@/components/provider/ProviderCard";
+import { AsyncView } from "@/components/ui/State";
+import { useBookingDraft } from "@/lib/booking/draft";
+import { listProviders } from "@/lib/data/queries";
+import { titleCase } from "@/lib/format";
+import { useAsync } from "@/lib/hooks";
 
 export default function Page() {
+  const draft = useBookingDraft();
+  const state = useAsync(async () => {
+    const all = await listProviders();
+    return all.filter((p) => {
+      const cityOk = !draft.city || (p.location?.city ?? "").toLowerCase() === draft.city.toLowerCase();
+      const typeOk =
+        !draft.eventType ||
+        !p.eventTypes?.length ||
+        p.eventTypes.some((t) => t.toLowerCase() === draft.eventType);
+      return cityOk && typeOk;
+    });
+  }, [draft.city, draft.eventType]);
+
+  const parts = [draft.eventType ? titleCase(draft.eventType) : null, draft.city].filter(Boolean);
+
   return (
     <FlowScreen
       title="Choose provider"
-      subtitle="Verified creators in your city"
-      backHref="/venue-selection"
-      nextHref="/provider-details"
-      nextLabel="Continue"
+      subtitle={parts.length ? `Creators for ${parts.join(" in ")}` : "Verified creators near you"}
+      backHref="/event-type-selection"
     >
-      <Inner />
+      <AsyncView state={state} empty="No providers match yet. Try another event type or city.">
+        {(providers) => (
+          <div>
+            {providers.map((p) => (
+              <ProviderCard key={p.id} provider={p} />
+            ))}
+          </div>
+        )}
+      </AsyncView>
     </FlowScreen>
   );
 }
