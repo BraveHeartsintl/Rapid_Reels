@@ -1,6 +1,12 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  type Firestore,
+} from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { getFunctions, type Functions } from "firebase/functions";
 
@@ -45,8 +51,24 @@ export function getAuthInstance(): Auth {
   return getAuth(getFirebaseApp());
 }
 
+let dbInstance: Firestore | null = null;
+
+/**
+ * Firestore with an IndexedDB-backed cache (shared across tabs) so repeat visits
+ * render from local data first. Falls back to the default instance if the
+ * browser can't provide persistence or Firestore was already initialised.
+ */
 export function getDb(): Firestore {
-  return getFirestore(getFirebaseApp());
+  if (dbInstance) return dbInstance;
+  const app = getFirebaseApp();
+  try {
+    dbInstance = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    dbInstance = getFirestore(app);
+  }
+  return dbInstance;
 }
 
 export function getStorageInstance(): FirebaseStorage {

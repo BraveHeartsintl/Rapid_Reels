@@ -72,7 +72,23 @@ export default function ProfileSetupPage() {
       <form onSubmit={submit} className="mt-8 space-y-4">
         <Input label="Full name" placeholder="Aisha Khan" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
         <Input label="Email" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Input label="Gender" placeholder="Optional" value={gender} onChange={(e) => setGender(e.target.value)} />
+        <label className="flex w-full flex-col gap-1.5 text-sm">
+          <span className="text-[var(--rr-text-secondary)]">Gender</span>
+          <select
+            value={gender}
+            onChange={(e) => setGender(e.target.value)}
+            required
+            className="w-full rounded-2xl border border-[var(--rr-outline)] bg-[var(--rr-surface)] px-4 py-3 text-[var(--rr-text)] outline-none transition focus:border-[var(--rr-primary)] focus:ring-2 focus:ring-[var(--rr-primary)]/30"
+          >
+            <option value="" disabled>
+              Select gender
+            </option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+            <option value="Prefer not to say">Prefer not to say</option>
+          </select>
+        </label>
         <label className="block rounded-2xl border border-dashed border-[var(--rr-outline)] bg-[var(--rr-surface)] p-6 text-center text-sm text-[var(--rr-text-tertiary)]">
           {photo ? photo.name : "Add a profile photo (optional)"}
           <input type="file" accept="image/*" className="hidden" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
@@ -85,7 +101,7 @@ export default function ProfileSetupPage() {
           By continuing you accept our <a href="/legal/terms" className="underline">Terms</a> and <a href="/legal/privacy" className="underline">Privacy Policy</a>.
         </p>
         {error ? <Notice>{error}</Notice> : null}
-        <Button type="submit" className="w-full" disabled={busy || !fullName.trim() || !user}>
+        <Button type="submit" className="w-full" disabled={busy || !fullName.trim() || !gender || !user}>
           {busy ? "Saving…" : "Continue"}
         </Button>
       </form>

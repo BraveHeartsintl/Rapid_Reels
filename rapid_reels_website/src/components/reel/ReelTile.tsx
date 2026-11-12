@@ -22,7 +22,7 @@ export function ReelTile({
       )}
     >
       {reel.thumbnailUrl ? (
-        <img src={reel.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <img src={reel.thumbnailUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
       ) : null}
       <div className="relative w-full bg-gradient-to-t from-black/80 to-transparent p-3">
         <p className="line-clamp-2 text-xs font-medium text-white">{reel.title || reel.eventName || "Reel"}</p>

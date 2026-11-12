@@ -12,24 +12,54 @@ export default function HomePage() {
           <div className="absolute -right-20 top-24 h-[70%] w-[55%] rounded-full bg-[var(--rr-primary)]/20 blur-3xl" />
           <div className="absolute bottom-0 left-0 h-1/2 w-full bg-gradient-to-t from-[var(--rr-bg)] to-transparent" />
         </div>
-        <div className="relative mx-auto w-full max-w-6xl animate-fade-up">
-          <Image
-            src="/logo.png"
-            alt="Rapid Reels"
-            width={320}
-            height={179}
-            priority
-            className="mb-6 h-auto w-56 object-contain sm:w-72"
-          />
-          <h1 className="sr-only">Rapid Reels</h1>
-          <p className="mt-4 max-w-xl text-lg text-[var(--rr-text-secondary)] sm:text-xl">
-            Event reels in minutes — book verified creators and share while the moment is still live.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button href="/role-selection">Get started</Button>
-            <Button href="/how-it-works" variant="outline">
-              See how it works
-            </Button>
+        <div className="relative mx-auto grid w-full max-w-6xl animate-fade-up items-center gap-10 md:grid-cols-2">
+          <div>
+            <Image
+              src="/logo.png"
+              alt="Rapid Reels"
+              width={634}
+              height={418}
+              priority
+              className="mb-6 h-auto w-56 object-contain drop-shadow-[0_0_30px_rgba(124,58,237,0.45)] sm:w-72"
+            />
+            <h1 className="sr-only">Rapid Reels</h1>
+            <p className="mt-4 max-w-xl text-lg text-[var(--rr-text-secondary)] sm:text-xl">
+              Event reels in minutes — book verified creators and share while the moment is still live.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button href="/role-selection">Get started</Button>
+              <Button href="/how-it-works" variant="outline">
+                See how it works
+              </Button>
+            </div>
+          </div>
+
+          <div className="relative mx-auto w-full max-w-sm md:max-w-md">
+            <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-[var(--rr-primary)]/50 via-fuchsia-500/25 to-orange-400/30 blur-2xl" />
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-white/10 shadow-2xl shadow-[var(--rr-primary)]/30">
+              <Image
+                src="/hero-event.jpg"
+                alt="A couple dancing under confetti while a creator films the moment"
+                fill
+                priority
+                sizes="(min-width: 768px) 448px, 90vw"
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
+              <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/55 px-3 py-1 text-xs font-semibold tracking-wide text-white backdrop-blur">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                LIVE
+              </span>
+              <div className="absolute inset-x-4 bottom-4 flex items-center justify-between rounded-2xl bg-black/55 px-4 py-3 text-white backdrop-blur">
+                <div>
+                  <p className="text-sm font-semibold">Your reel is ready</p>
+                  <p className="text-xs text-white/70">Delivered in minutes</p>
+                </div>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--rr-primary)] text-sm">
+                  ▶
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </section>

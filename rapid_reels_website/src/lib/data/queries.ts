@@ -332,18 +332,39 @@ function isDiscoverApproved(r: ReelDoc): boolean {
   return Boolean(r.isPublic) && (r.status === "delivered" || r.status === "published") && (!ms || ms === "approved");
 }
 
+const DISCOVER_TTL_MS = 60_000;
+let discoverCache: { at: number; rows: WithId<ReelDoc>[] } | null = null;
+let discoverInflight: Promise<WithId<ReelDoc>[]> | null = null;
+
+/**
+ * Approved public reels, trending first. The Firestore read is shared and cached
+ * for a minute so switching category chips (filtered client-side) or revisiting
+ * the page does not re-download the whole collection.
+ */
+async function loadDiscoverRows(): Promise<WithId<ReelDoc>[]> {
+  if (discoverCache && Date.now() - discoverCache.at < DISCOVER_TTL_MS) return discoverCache.rows;
+  if (!discoverInflight) {
+    discoverInflight = list<ReelDoc>(
+      "reels",
+      where("isPublic", "==", true),
+      where("status", "in", ["delivered", "published"]),
+      qLimit(100),
+    )
+      .then((rows) => {
+        const approved = rows.filter(isDiscoverApproved).sort(trending);
+        discoverCache = { at: Date.now(), rows: approved };
+        return approved;
+      })
+      .finally(() => {
+        discoverInflight = null;
+      });
+  }
+  return discoverInflight;
+}
+
 export async function listDiscoverReels(max = 40, eventType?: string): Promise<WithId<ReelDoc>[]> {
-  const rows = await list<ReelDoc>(
-    "reels",
-    where("isPublic", "==", true),
-    where("status", "in", ["delivered", "published"]),
-    qLimit(200),
-  );
-  return rows
-    .filter(isDiscoverApproved)
-    .filter((r) => !eventType || r.eventType === eventType)
-    .sort(trending)
-    .slice(0, max);
+  const rows = await loadDiscoverRows();
+  return rows.filter((r) => !eventType || r.eventType === eventType).slice(0, max);
 }
 
 export async function listCustomerReels(uid: string): Promise<WithId<ReelDoc>[]> {
