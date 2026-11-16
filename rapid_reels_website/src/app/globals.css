@@ -1,20 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --rr-bg: #141a1d;
-  --rr-primary: #6a00ff;
-  --rr-secondary: #00d4ff;
-  --rr-primary-dark: #4b00c8;
-  --rr-surface: #1d2529;
-  --rr-card: #232d31;
-  --rr-surface-elevated: #2a353a;
+  /* Palette: near-black base with a sunset gradient — orange, pink/magenta, violet, indigo */
+  --rr-bg: #07040d;
+  --rr-primary: #b23ff0;
+  --rr-secondary: #f58a4c;
+  --rr-primary-dark: #4a2cff;
+  --rr-surface: #100b1a;
+  --rr-card: #181226;
+  --rr-surface-elevated: #231a38;
   --rr-text: #ffffff;
-  --rr-text-secondary: #d2d2d1;
-  --rr-text-tertiary: #8d8e91;
+  --rr-text-secondary: #f1e8ff;
+  --rr-text-tertiary: #b3a4cc;
+  --rr-gradient: linear-gradient(135deg, #f58a4c 0%, #e85aa8 40%, #b23ff0 70%, #4a2cff 100%);
   --rr-success: #4ade80;
   --rr-warning: #f2b544;
   --rr-error: #e57373;
-  --rr-outline: #3d484c;
+  --rr-outline: #3a2a5c;
   --background: var(--rr-bg);
   --foreground: var(--rr-text);
 }
@@ -68,7 +70,8 @@ body {
 
 .hero-glow {
   background:
-    radial-gradient(ellipse 80% 60% at 50% 20%, rgba(106, 0, 255, 0.35), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 80% 60%, rgba(0, 212, 255, 0.18), transparent 55%),
-    linear-gradient(180deg, #141a1d 0%, #1a101f 45%, #141a1d 100%);
+    radial-gradient(ellipse 70% 55% at 15% 25%, rgba(245, 138, 76, 0.32), transparent 60%),
+    radial-gradient(ellipse 80% 60% at 55% 30%, rgba(178, 63, 240, 0.38), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 70%, rgba(74, 44, 255, 0.35), transparent 55%),
+    linear-gradient(180deg, #07040d 0%, #170a2b 45%, #07040d 100%);
 }

@@ -20,7 +20,7 @@ export default function HomePage() {
               width={634}
               height={418}
               priority
-              className="mb-6 h-auto w-56 object-contain drop-shadow-[0_0_30px_rgba(124,58,237,0.45)] sm:w-72"
+              className="mb-6 h-auto w-56 object-contain drop-shadow-[0_0_30px_rgba(178,63,240,0.5)] sm:w-72"
             />
             <h1 className="sr-only">Rapid Reels</h1>
             <p className="mt-4 max-w-xl text-lg text-[var(--rr-text-secondary)] sm:text-xl">
@@ -35,7 +35,7 @@ export default function HomePage() {
           </div>
 
           <div className="relative mx-auto w-full max-w-sm md:max-w-md">
-            <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-[var(--rr-primary)]/50 via-fuchsia-500/25 to-orange-400/30 blur-2xl" />
+            <div className="absolute -inset-4 rounded-[2.5rem] bg-gradient-to-br from-[var(--rr-primary)]/50 via-[var(--rr-primary-dark)]/30 to-[var(--rr-secondary)]/30 blur-2xl" />
             <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-white/10 shadow-2xl shadow-[var(--rr-primary)]/30">
               <Image
                 src="/hero-event.jpg"

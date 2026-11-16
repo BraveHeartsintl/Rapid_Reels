@@ -68,9 +68,9 @@ export function errorMessage(e: unknown): string {
 }
 
 export const EVENT_TYPES = [
-  { id: "wedding", label: "Wedding", color: "#6A00FF" },
-  { id: "birthday", label: "Birthday", color: "#3A8AA4" },
-  { id: "engagement", label: "Engagement", color: "#4B00C8" },
-  { id: "corporate", label: "Corporate", color: "#F3C759" },
-  { id: "brand", label: "Brand collab", color: "#DDBA63" },
+  { id: "wedding", label: "Wedding", color: "#B23FF0" },
+  { id: "birthday", label: "Birthday", color: "#F58A4C" },
+  { id: "engagement", label: "Engagement", color: "#E85AA8" },
+  { id: "corporate", label: "Corporate", color: "#22D3EE" },
+  { id: "brand", label: "Brand collab", color: "#6B5BFF" },
 ] as const;
