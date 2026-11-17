@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Inter } from "next/font/google";
 import { Suspense } from "react";
 import { FirebaseProvider } from "@/components/FirebaseProvider";
 import "./globals.css";
 
-const poppins = Poppins({
+const display = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-poppins",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-display",
 });
 
 export const metadata: Metadata = {
@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${poppins.variable} h-full antialiased`}>
+    <html lang="en" className={`${display.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
         <Suspense fallback={null}>
           <FirebaseProvider>{children}</FirebaseProvider>

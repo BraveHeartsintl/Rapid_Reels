@@ -12,24 +12,24 @@ const links = [
 
 export function MarketingNav() {
   return (
-    <header className="absolute inset-x-0 top-0 z-40">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
+    <header className="absolute inset-x-0 top-0 z-40 px-3 pt-4 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 rounded-full border border-white/10 bg-white/5 px-4 py-2 shadow-lg shadow-black/20 backdrop-blur-xl sm:px-5">
         <Link href="/" className="flex items-center gap-3">
           <Image
             src="/logo.png"
             alt="Rapid Reels"
             width={140}
             height={78}
-            className="h-11 w-auto object-contain"
+            className="h-9 w-auto object-contain"
             priority
           />
         </Link>
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-1 md:flex">
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className="text-sm text-[var(--rr-text-secondary)] transition hover:text-white"
+              className="whitespace-nowrap rounded-full px-3 py-1.5 text-sm text-[var(--rr-text-secondary)] lg:px-4 transition hover:bg-white/10 hover:text-white"
             >
               {l.label}
             </Link>
@@ -50,7 +50,7 @@ export function MarketingNav() {
 
 export function MarketingFooter() {
   return (
-    <footer className="border-t border-[var(--rr-outline)]/50 bg-[var(--rr-surface)]">
+    <footer className="border-t border-[var(--rr-outline)]/50 bg-[var(--color-ink)]">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-4">
         <div className="md:col-span-2">
           <div className="mb-3 flex items-center gap-3">

@@ -10,7 +10,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-[var(--rr-outline)]/60 bg-[var(--rr-card)] p-5",
+        "rounded-[var(--radius-md)] border border-[var(--rr-outline)]/60 bg-[var(--rr-card)] p-5 shadow-[var(--shadow-card)]",
         className,
       )}
     >
@@ -27,7 +27,7 @@ export function Badge({
   tone?: "primary" | "success" | "warning" | "muted" | "secondary";
 }) {
   const tones = {
-    primary: "bg-[var(--rr-primary)]/20 text-[var(--rr-secondary)]",
+    primary: "bg-[var(--color-primary)]/15 text-[var(--rr-secondary)]",
     success: "bg-[var(--rr-success)]/15 text-[var(--rr-success)]",
     warning: "bg-[var(--rr-warning)]/15 text-[var(--rr-warning)]",
     muted: "bg-white/5 text-[var(--rr-text-tertiary)]",

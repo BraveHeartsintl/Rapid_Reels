@@ -78,7 +78,7 @@ export default function ProfileSetupPage() {
             value={gender}
             onChange={(e) => setGender(e.target.value)}
             required
-            className="w-full rounded-2xl border border-[var(--rr-outline)] bg-[var(--rr-surface)] px-4 py-3 text-[var(--rr-text)] outline-none transition focus:border-[var(--rr-primary)] focus:ring-2 focus:ring-[var(--rr-primary)]/30"
+            className="w-full rounded-[var(--radius-sm)] border border-[var(--rr-outline)] bg-[var(--rr-surface)] px-4 py-3 text-[var(--rr-text)] outline-none transition duration-200 ease-out focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/20"
           >
             <option value="" disabled>
               Select gender

@@ -47,7 +47,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     state = const AsyncValue.loading();
     String? verificationId;
     String? errorMessage;
-    
+
     await _authRepository.verifyPhoneNumber(
       phoneNumber: phoneNumber,
       onCodeSent: (String id) {
@@ -59,7 +59,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
         state = AsyncValue.error(error, StackTrace.current);
       },
     );
-    
+
     // If verificationId is still null and we captured an error message,
     // throw it so UI can display the actual Firebase error instead of a
     // generic "Failed to send OTP" message.
@@ -131,6 +131,19 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
     }
   }
 
+  // Apple Sign In
+  Future<bool> signInWithApple() async {
+    try {
+      state = const AsyncValue.loading();
+      final credential = await _authRepository.signInWithApple();
+      state = AsyncValue.data(credential.user);
+      return true;
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+      return false;
+    }
+  }
+
   // Sign Out — clears local Riverpod caches for the signed-out uid so Firestore
   // streams do not keep a PERMISSION_DENIED error for the next login.
   Future<void> signOut([WidgetRef? ref]) async {
@@ -154,7 +167,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
       debugPrint('Error creating user profile: $e');
       // Log the full error for debugging
       if (e.toString().contains('PERMISSION_DENIED')) {
-        debugPrint('PERMISSION_DENIED: Firestore security rules need to be deployed!');
+        debugPrint(
+          'PERMISSION_DENIED: Firestore security rules need to be deployed!',
+        );
         debugPrint('See FIRESTORE_SECURITY_RULES_SETUP.md for instructions');
       }
       return false;
@@ -162,7 +177,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   }
 
   // Update User Profile
-  Future<bool> updateUserProfile(String userId, Map<String, dynamic> data) async {
+  Future<bool> updateUserProfile(
+    String userId,
+    Map<String, dynamic> data,
+  ) async {
     try {
       await _authRepository.updateUserProfile(userId, data);
       return true;
@@ -188,9 +206,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
 }
 
 // Auth Notifier Provider
-final authNotifierProvider = StateNotifierProvider<AuthNotifier, AsyncValue<User?>>((ref) {
-  return AuthNotifier(ref.watch(authRepositoryProvider));
-});
+final authNotifierProvider =
+    StateNotifierProvider<AuthNotifier, AsyncValue<User?>>((ref) {
+      return AuthNotifier(ref.watch(authRepositoryProvider));
+    });
 
 // User Profile Data Notifier
 class UserProfileNotifier extends StateNotifier<AsyncValue<UserModel?>> {
@@ -198,7 +217,7 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   final String userId;
 
   UserProfileNotifier(this._authRepository, this.userId)
-      : super(const AsyncValue.loading()) {
+    : super(const AsyncValue.loading()) {
     _loadUserProfile();
   }
 
@@ -226,8 +245,11 @@ class UserProfileNotifier extends StateNotifier<AsyncValue<UserModel?>> {
 }
 
 // User Profile Notifier Provider
-final userProfileNotifierProvider = StateNotifierProvider.family<
-    UserProfileNotifier, AsyncValue<UserModel?>, String>((ref, userId) {
-  return UserProfileNotifier(ref.watch(authRepositoryProvider), userId);
-});
-
+final userProfileNotifierProvider =
+    StateNotifierProvider.family<
+      UserProfileNotifier,
+      AsyncValue<UserModel?>,
+      String
+    >((ref, userId) {
+      return UserProfileNotifier(ref.watch(authRepositoryProvider), userId);
+    });

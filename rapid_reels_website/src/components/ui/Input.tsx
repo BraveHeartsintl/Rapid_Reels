@@ -9,12 +9,12 @@ export function Input({ label, className, id, ...props }: Props) {
   return (
     <label className="flex w-full flex-col gap-1.5 text-sm">
       {label ? (
-        <span className="text-[var(--rr-text-secondary)]">{label}</span>
+        <span className="text-sm font-semibold text-[var(--rr-text-secondary)]">{label}</span>
       ) : null}
       <input
         id={inputId}
         className={cn(
-          "w-full rounded-2xl border border-[var(--rr-outline)] bg-[var(--rr-surface)] px-4 py-3 text-[var(--rr-text)] outline-none transition placeholder:text-[var(--rr-text-tertiary)] focus:border-[var(--rr-primary)] focus:ring-2 focus:ring-[var(--rr-primary)]/30",
+          "h-12 w-full rounded-[var(--radius-sm)] border border-[var(--rr-outline)] bg-[var(--rr-surface)] px-4 text-[var(--rr-text)] outline-none transition duration-200 ease-out placeholder:text-[var(--rr-text-tertiary)] focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/20",
           className,
         )}
         {...props}

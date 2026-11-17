@@ -1,9 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:crypto/crypto.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../models/user_model.dart';
+import '../../../../core/auth/apple_auth_config.dart';
 import '../../../../core/firebase/models/firebase_user_model.dart' as fb;
 import '../../../../core/firebase/services/firestore_service.dart';
 import '../../../../core/firebase/services/firebase_init_service.dart';
@@ -15,13 +20,11 @@ class AuthRepository {
   final GoogleSignIn _googleSignIn;
   bool _googleSignInInitialized = false;
 
-  AuthRepository({
-    FirebaseAuth? firebaseAuth,
-    FirestoreService? firestore,
-  })  : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirestoreService(),
-        _googleSignIn = GoogleSignIn.instance;
-  
+  AuthRepository({FirebaseAuth? firebaseAuth, FirestoreService? firestore})
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
+      _firestore = firestore ?? FirestoreService(),
+      _googleSignIn = GoogleSignIn.instance;
+
   /// Firebase auth state stream
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
@@ -55,20 +58,20 @@ class AuthRepository {
       // In Android release, force reCAPTCHA to avoid device/Play Integrity
       // verification issues seen in production OTP flows.
       if (shouldForceRecaptcha) {
-        await _firebaseAuth.setSettings(
-          forceRecaptchaFlow: true,
-        );
+        await _firebaseAuth.setSettings(forceRecaptchaFlow: true);
       }
-      
+
       await _firebaseAuth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         timeout: const Duration(seconds: 60),
-        
+
         // Android only: SMS retrieved and verified automatically
         verificationCompleted: (PhoneAuthCredential credential) async {
           if (onAutoVerify != null) {
             try {
-              final result = await _firebaseAuth.signInWithCredential(credential);
+              final result = await _firebaseAuth.signInWithCredential(
+                credential,
+              );
               onAutoVerify(result);
             } catch (e) {
               debugPrint('[Auth] Auto sign-in failed: $e');
@@ -76,24 +79,21 @@ class AuthRepository {
           }
           if (!completer.isCompleted) completer.complete();
         },
-        
+
         // OTP SMS sent successfully
         codeSent: (String verificationId, int? resendToken) {
           onCodeSent(verificationId);
           if (!completer.isCompleted) completer.complete();
         },
-        
+
         // Error occurred
         verificationFailed: (FirebaseAuthException e) {
-          _recordPhoneAuthFailure(
-            stage: 'verifyPhoneNumber',
-            exception: e,
-          );
+          _recordPhoneAuthFailure(stage: 'verifyPhoneNumber', exception: e);
           String friendlyMessage = _getFriendlyError(e);
           onError(friendlyMessage);
           if (!completer.isCompleted) completer.completeError(e);
         },
-        
+
         // Auto-retrieval timed out; verificationId still valid for manual entry
         codeAutoRetrievalTimeout: (String verificationId) {
           // Timeout is not an error - verificationId is still valid
@@ -107,14 +107,11 @@ class AuthRepository {
       if (e is! FirebaseAuthException) {
         onError('Failed to send OTP: ${e.toString()}');
       } else {
-        _recordPhoneAuthFailure(
-          stage: 'verifyPhoneNumber-catch',
-          exception: e,
-        );
+        _recordPhoneAuthFailure(stage: 'verifyPhoneNumber-catch', exception: e);
       }
     }
   }
-  
+
   // Helper method for user-friendly error messages
   String _getFriendlyError(FirebaseAuthException e) {
     final errorMessage = e.message?.toLowerCase() ?? '';
@@ -133,9 +130,9 @@ class AuthRepository {
             '4. If just updated settings, wait 5-10 minutes and reload the page';
       }
     }
-    
+
     // Check for Play Integrity / reCAPTCHA errors
-    if (errorMessage.contains('play integrity') || 
+    if (errorMessage.contains('play integrity') ||
         errorMessage.contains('missing a valid app identifier') ||
         errorMessage.contains('recaptcha') ||
         errorMessage.contains('missing initial state') ||
@@ -149,7 +146,7 @@ class AuthRepository {
           '3. Rebuild the app completely\n'
           'OR use a test phone number added in Firebase Console';
     }
-    
+
     switch (e.code) {
       case 'invalid-phone-number':
         return 'Invalid phone number. Use format: +919876543210';
@@ -182,27 +179,23 @@ class AuthRepository {
         verificationId: verificationId,
         smsCode: otp,
       );
-      
+
       // Sign in with the credential
-      final userCredential = await _firebaseAuth.signInWithCredential(credential);
-      
+      final userCredential = await _firebaseAuth.signInWithCredential(
+        credential,
+      );
+
       // Ensure a user document exists
       final user = userCredential.user;
       if (user != null) {
         await _ensureUserDocument(user);
       }
-      
+
       return userCredential;
     } on FirebaseAuthException catch (e) {
-      _recordPhoneAuthFailure(
-        stage: 'verifyOTP',
-        exception: e,
-      );
+      _recordPhoneAuthFailure(stage: 'verifyOTP', exception: e);
       // Re-throw Firebase Auth exceptions with friendly messages
-      throw FirebaseAuthException(
-        code: e.code,
-        message: _getFriendlyError(e),
-      );
+      throw FirebaseAuthException(code: e.code, message: _getFriendlyError(e));
     } catch (e) {
       throw FirebaseAuthException(
         code: 'verification-failed',
@@ -215,7 +208,8 @@ class AuthRepository {
     required String stage,
     required FirebaseAuthException exception,
   }) {
-    final reason = '[phone_auth][$stage] code=${exception.code} '
+    final reason =
+        '[phone_auth][$stage] code=${exception.code} '
         'message=${exception.message ?? 'n/a'}';
     debugPrint(reason);
     unawaited(
@@ -307,6 +301,124 @@ class AuthRepository {
     }
   }
 
+  // Apple Sign-In (iOS/macOS)
+  Future<UserCredential> signInWithApple() async {
+    try {
+      if (!kIsWeb &&
+          defaultTargetPlatform != TargetPlatform.iOS &&
+          defaultTargetPlatform != TargetPlatform.macOS) {
+        throw FirebaseAuthException(
+          code: 'apple-signin-not-supported',
+          message: 'Sign in with Apple is only available on Apple devices.',
+        );
+      }
+
+      final isAvailable = await SignInWithApple.isAvailable();
+      if (!isAvailable) {
+        throw FirebaseAuthException(
+          code: 'apple-signin-not-available',
+          message: 'Sign in with Apple is not available on this device.',
+        );
+      }
+
+      final rawNonce = _generateNonce();
+      final nonce = _sha256ofString(rawNonce);
+
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: nonce,
+        webAuthenticationOptions: _appleWebAuthenticationOptions(),
+      );
+
+      final idToken = appleCredential.identityToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw FirebaseAuthException(
+          code: 'apple-signin-missing-id-token',
+          message:
+              'Apple did not return an identity token. Check Sign in with Apple '
+              'in Xcode, your App ID, and Firebase Apple provider settings.',
+        );
+      }
+
+      // Firebase validates the Apple OAuth response server-side; include the
+      // authorization code when present (required for some Firebase/Apple flows).
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: idToken,
+        rawNonce: rawNonce,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      final userCredential = await _firebaseAuth.signInWithCredential(
+        oauthCredential,
+      );
+
+      final givenName = appleCredential.givenName?.trim() ?? '';
+      final familyName = appleCredential.familyName?.trim() ?? '';
+      final fullName = '$givenName $familyName'.trim();
+      final user = userCredential.user;
+      if (user != null &&
+          fullName.isNotEmpty &&
+          (user.displayName ?? '').isEmpty) {
+        await user.updateDisplayName(fullName);
+      }
+
+      if (userCredential.user != null) {
+        await _ensureUserDocument(userCredential.user!);
+      }
+
+      return userCredential;
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        throw FirebaseAuthException(
+          code: 'sign_in_canceled',
+          message: 'Apple sign-in was canceled.',
+        );
+      }
+      throw FirebaseAuthException(
+        code: 'apple-signin-failed',
+        message: 'Apple Sign-In failed: ${e.message}',
+      );
+    } on FirebaseAuthException catch (e) {
+      throw FirebaseAuthException(
+        code: e.code,
+        message: _friendlyAppleFirebaseError(e),
+      );
+    } catch (e) {
+      throw FirebaseAuthException(
+        code: 'apple-signin-failed',
+        message: 'Apple Sign-In failed: ${e.toString()}',
+      );
+    }
+  }
+
+  WebAuthenticationOptions? _appleWebAuthenticationOptions() {
+    if (kIsWeb || defaultTargetPlatform == TargetPlatform.android) {
+      return WebAuthenticationOptions(
+        clientId: AppleAuthConfig.servicesId,
+        redirectUri: Uri.parse(AppleAuthConfig.firebaseAuthRedirectUri),
+      );
+    }
+    return null;
+  }
+
+  String _friendlyAppleFirebaseError(FirebaseAuthException e) {
+    final message = (e.message ?? '').toLowerCase();
+    if (message.contains('invalid oauth') ||
+        e.code == 'invalid-credential' ||
+        e.code == 'invalid-oauth-provider-response') {
+      return 'Apple sign-in could not be verified with Firebase. Confirm in '
+          'Firebase Console → Authentication → Apple: Service ID '
+          '${AppleAuthConfig.servicesId}, Team ID ${AppleAuthConfig.teamId}, '
+          'Key ID 2VXM38TGWU, and your .p8 key. In Apple Developer → Services ID, '
+          'add domain rapidreelnew-de86a.firebaseapp.com and Return URL '
+          '${AppleAuthConfig.firebaseAuthRedirectUri}. Then rebuild the iOS app.';
+    }
+    return e.message ?? 'Apple Sign-In failed (${e.code}).';
+  }
+
   // Facebook Sign-In (placeholder)
   Future<UserCredential> signInWithFacebook() async {
     throw UnimplementedError(
@@ -338,8 +450,10 @@ class AuthRepository {
 
   // Create or Update User Profile in Firestore (users collection)
   Future<void> createUserProfile(UserModel user) async {
-    final firebaseUser =
-        await _toFirebaseUserModel(userId: user.userId, user: user);
+    final firebaseUser = await _toFirebaseUserModel(
+      userId: user.userId,
+      user: user,
+    );
     await _firestore.setUser(firebaseUser);
   }
 
@@ -411,9 +525,7 @@ class AuthRepository {
   Future<void> _ensureUserDocument(User user) async {
     final existing = await _firestore.getUser(user.uid);
     if (existing != null) {
-      await _firestore.updateUser(user.uid, {
-        'lastLoginAt': DateTime.now(),
-      });
+      await _firestore.updateUser(user.uid, {'lastLoginAt': DateTime.now()});
       return;
     }
 
@@ -432,6 +544,22 @@ class AuthRepository {
     await _firestore.setUser(firebaseUser);
   }
 
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
+  }
+
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
   // Mapping: FirebaseUserModel -> domain UserModel
   UserModel _toDomainUserModel(fb.FirebaseUserModel firebaseUser) {
     return UserModel(
@@ -446,10 +574,8 @@ class AuthRepository {
               state: firebaseUser.currentLocation!.state,
               country: firebaseUser.currentLocation!.country,
               coordinates: Coordinates(
-                latitude:
-                    firebaseUser.currentLocation!.coordinates.latitude,
-                longitude:
-                    firebaseUser.currentLocation!.coordinates.longitude,
+                latitude: firebaseUser.currentLocation!.coordinates.latitude,
+                longitude: firebaseUser.currentLocation!.coordinates.longitude,
               ),
             )
           : null,

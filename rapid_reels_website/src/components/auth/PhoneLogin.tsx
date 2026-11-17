@@ -43,15 +43,15 @@ export function PhoneLogin({ role, children }: { role: LoginRole; children?: Rea
   }
 
   return (
-    <form onSubmit={submit} className="mt-8 space-y-4">
+    <form onSubmit={submit} className="mt-8 space-y-5">
       {!configured ? <Notice>Firebase is not configured. Add your keys to .env.local.</Notice> : null}
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-3">
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="text-[var(--rr-text-secondary)]">Country</span>
+          <span className="text-sm font-semibold text-[var(--rr-text-secondary)]">Country</span>
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            className="rounded-2xl border border-[var(--rr-outline)] bg-[var(--rr-surface)] px-3 py-3 text-[var(--rr-text)] outline-none focus:border-[var(--rr-primary)]"
+            className="h-12 rounded-[var(--radius-sm)] border border-[var(--rr-outline)] bg-[var(--rr-surface)] px-3 text-[var(--rr-text)] outline-none transition duration-200 ease-out focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/20"
           >
             <option value="+44">UK +44</option>
             <option value="+91">India +91</option>
@@ -71,6 +71,9 @@ export function PhoneLogin({ role, children }: { role: LoginRole; children?: Rea
       <Button type="submit" className="w-full" disabled={busy || !configured}>
         {busy ? "Sending…" : "Send OTP"}
       </Button>
+      <p className="text-center text-xs text-[var(--rr-text-tertiary)]">
+        You will receive a one-time 6-digit code by SMS.
+      </p>
       {children}
     </form>
   );

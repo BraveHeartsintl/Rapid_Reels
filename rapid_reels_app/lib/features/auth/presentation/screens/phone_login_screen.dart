@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -32,6 +34,7 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
   Timer? _rateLimitTimer;
   bool _agreeLegal = false;
   bool _marketingOptIn = false;
+  bool _appleSignInAvailable = false;
 
   // Common country codes
   final List<Map<String, String>> _countryCodes = [
@@ -44,10 +47,33 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _checkAppleSignInAvailability();
+  }
+
+  @override
   void dispose() {
     _rateLimitTimer?.cancel();
     _phoneController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkAppleSignInAvailability() async {
+    // Guideline 4.8 is for the iOS App Store build; native Apple auth is iOS-only here.
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
+      if (!mounted) return;
+      setState(() => _appleSignInAvailable = false);
+      return;
+    }
+    try {
+      final available = await SignInWithApple.isAvailable();
+      if (!mounted) return;
+      setState(() => _appleSignInAvailable = available);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _appleSignInAvailable = false);
+    }
   }
 
   void _startRateLimitTimer() {
@@ -90,6 +116,29 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
     }
     if (message.contains('network') || message.contains('Network')) {
       return 'Network issue while signing in with Google. Please try again.';
+    }
+    return message;
+  }
+
+  String _friendlyAppleError(Object error) {
+    String message = error.toString();
+    if (message.startsWith('Exception: ')) {
+      message = message.substring(11);
+    }
+    if (message.startsWith('FirebaseAuthException: ')) {
+      message = message.substring('FirebaseAuthException: '.length);
+    }
+    if (message.contains('sign_in_canceled')) {
+      return 'Apple sign-in was canceled.';
+    }
+    if (message.contains('apple-signin-not-supported')) {
+      return 'Sign in with Apple is only available on Apple devices.';
+    }
+    if (message.contains('apple-signin-not-available')) {
+      return 'Sign in with Apple is not available on this device.';
+    }
+    if (message.contains('network') || message.contains('Network')) {
+      return 'Network issue while signing in with Apple. Please try again.';
     }
     return message;
   }
@@ -137,10 +186,7 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
         // Navigate to OTP verification screen
         context.push(
           AppRoutes.otpVerification,
-          extra: {
-            'verificationId': verificationId,
-            'phoneNumber': phoneNumber,
-          },
+          extra: {'verificationId': verificationId, 'phoneNumber': phoneNumber},
         );
       } else {
         if (mounted) {
@@ -156,32 +202,30 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
       if (mounted) {
         // Extract user-friendly error message
         String errorMessage = e.toString();
-        
+
         // Remove "Exception: " prefix if present
         if (errorMessage.startsWith('Exception: ')) {
           errorMessage = errorMessage.substring(11);
         }
-        
+
         // Check for rate limiting error
-        if (errorMessage.contains('Too many attempts') || 
+        if (errorMessage.contains('Too many attempts') ||
             errorMessage.contains('too-many-requests') ||
             errorMessage.contains('wait a few minutes')) {
           _startRateLimitTimer();
-          errorMessage = 'Too many attempts. Please wait ${_formatTime(_rateLimitSeconds)} before trying again.';
+          errorMessage =
+              'Too many attempts. Please wait ${_formatTime(_rateLimitSeconds)} before trying again.';
         }
-        
+
         // Show specific message for billing errors
-        if (errorMessage.contains('BILLING_NOT_ENABLED') || 
+        if (errorMessage.contains('BILLING_NOT_ENABLED') ||
             errorMessage.contains('billing') ||
             errorMessage.contains('billing-not-enabled')) {
-          errorMessage = 'Phone authentication requires billing to be enabled in Firebase Console. Please enable billing to use this feature.';
+          errorMessage =
+              'Phone authentication requires billing to be enabled in Firebase Console. Please enable billing to use this feature.';
         }
-        
-        Helpers.showSnackBar(
-          context,
-          errorMessage,
-          isError: true,
-        );
+
+        Helpers.showSnackBar(context, errorMessage, isError: true);
       }
     }
   }
@@ -232,20 +276,71 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
               errorMessage = _friendlyGoogleError(error);
             },
           );
-          Helpers.showSnackBar(
-            context,
-            errorMessage,
-            isError: true,
-          );
+          Helpers.showSnackBar(context, errorMessage, isError: true);
         }
       }
     } catch (e) {
       if (mounted) {
-        Helpers.showSnackBar(
-          context,
-          _friendlyGoogleError(e),
-          isError: true,
-        );
+        Helpers.showSnackBar(context, _friendlyGoogleError(e), isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    if (!_agreeLegal) {
+      Helpers.showSnackBar(
+        context,
+        'Please confirm you agree to the Terms, Privacy Policy, and Acceptable Use Policy.',
+        isError: true,
+      );
+      return;
+    }
+    await UgcCommunityPrefs.accept();
+
+    setState(() => _isLoading = true);
+
+    try {
+      final success = await ref
+          .read(authNotifierProvider.notifier)
+          .signInWithApple();
+
+      if (success && mounted) {
+        final user = ref.read(currentUserProvider);
+        if (user != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool(_pendingMarketingKey, _marketingOptIn);
+
+          final profileExists = await ref
+              .read(authNotifierProvider.notifier)
+              .userProfileExists(user.uid);
+
+          if (!mounted) return;
+
+          if (profileExists) {
+            context.go(AppRoutes.home);
+          } else {
+            context.go(AppRoutes.profileSetup);
+          }
+        }
+      } else {
+        if (mounted) {
+          final authState = ref.read(authNotifierProvider);
+          String errorMessage = 'Apple Sign-In failed';
+          authState.whenOrNull(
+            error: (error, _) {
+              errorMessage = _friendlyAppleError(error);
+            },
+          );
+          Helpers.showSnackBar(context, errorMessage, isError: true);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Helpers.showSnackBar(context, _friendlyAppleError(e), isError: true);
       }
     } finally {
       if (mounted) {
@@ -294,10 +389,7 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                 // Title
                 const Text(
                   AppStrings.welcomeTitle,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
 
@@ -320,13 +412,18 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                         color: AppColors.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: AppColors.cardBackground.withValues(alpha: 0.5),
+                          color: AppColors.cardBackground.withValues(
+                            alpha: 0.5,
+                          ),
                         ),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _selectedCountryCode,
-                          icon: const Icon(Icons.arrow_drop_down, color: AppColors.textPrimary),
+                          icon: const Icon(
+                            Icons.arrow_drop_down,
+                            color: AppColors.textPrimary,
+                          ),
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 16,
@@ -335,7 +432,9 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                             return DropdownMenuItem<String>(
                               value: country['code'],
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0,
+                                ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -400,7 +499,9 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                   text: _rateLimitSeconds > 0
                       ? 'Wait ${_formatTime(_rateLimitSeconds)}'
                       : AppStrings.sendOTP,
-                  onPressed: (_isLoading || _rateLimitSeconds > 0) ? null : _sendOTP,
+                  onPressed: (_isLoading || _rateLimitSeconds > 0)
+                      ? null
+                      : _sendOTP,
                   isLoading: _isLoading,
                   borderRadius: 12,
                 ),
@@ -437,9 +538,7 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         'OR',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
+                        style: TextStyle(color: AppColors.textSecondary),
                       ),
                     ),
                     const Expanded(child: Divider()),
@@ -460,6 +559,22 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                     label: const Text('Continue with Google'),
                   ),
                 ),
+                if (_appleSignInAvailable) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _signInWithApple,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.black,
+                        side: const BorderSide(color: Colors.black),
+                        backgroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.apple),
+                      label: const Text('Continue with Apple'),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 TextButton(
                   onPressed: () => context.go(AppRoutes.roleSelection),
@@ -468,10 +583,7 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                   ),
                   child: const Text(
                     'Choose account type',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -482,4 +594,3 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
     );
   }
 }
-

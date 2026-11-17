@@ -1,5 +1,11 @@
 import Image from "next/image";
 import { MarketingFooter, MarketingNav } from "@/components/layout/MarketingChrome";
+import { CtaBanner } from "@/components/home/CtaBanner";
+import { FaqAccordion } from "@/components/home/FaqAccordion";
+import { FeatureTiles } from "@/components/home/FeatureTiles";
+import { PackageTiers } from "@/components/home/PackageTiers";
+import { ReelCarousel } from "@/components/home/ReelCarousel";
+import { ReelShowcase } from "@/components/home/ReelShowcase";
 import { Button } from "@/components/ui/Button";
 import { EVENT_TYPES as eventTypes } from "@/lib/format";
 
@@ -20,11 +26,16 @@ export default function HomePage() {
               width={634}
               height={418}
               priority
-              className="mb-6 h-auto w-56 object-contain drop-shadow-[0_0_30px_rgba(178,63,240,0.5)] sm:w-72"
+              className="mb-6 h-auto w-56 object-contain drop-shadow-[0_0_30px_rgba(254,0,42,0.45)] sm:w-72"
             />
             <h1 className="sr-only">Rapid Reels</h1>
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-[var(--rr-accent)] backdrop-blur">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--rr-accent)]" />
+              Book verified event creators
+            </span>
             <p className="mt-4 max-w-xl text-lg text-[var(--rr-text-secondary)] sm:text-xl">
-              Event reels in minutes — book verified creators and share while the moment is still live.
+              <span className="text-gradient font-semibold">Event reels in minutes</span> — book verified creators and
+              share while the moment is still live.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button href="/role-selection">Get started</Button>
@@ -64,6 +75,8 @@ export default function HomePage() {
         </div>
       </section>
 
+      <ReelCarousel />
+
       <section className="border-t border-[var(--rr-outline)]/40 px-4 py-20 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <h2 className="text-2xl font-semibold text-white sm:text-3xl">Built for every celebration</h2>
@@ -87,6 +100,10 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <ReelShowcase />
+
+      <FeatureTiles />
 
       <section className="bg-[var(--rr-surface)] px-4 py-20 sm:px-6">
         <div className="mx-auto grid max-w-6xl items-center gap-10 md:grid-cols-2">
@@ -117,6 +134,12 @@ export default function HomePage() {
           </ol>
         </div>
       </section>
+
+      <PackageTiers />
+
+      <FaqAccordion />
+
+      <CtaBanner />
 
       <section className="px-4 py-20 text-center sm:px-6">
         <div className="mx-auto max-w-3xl">

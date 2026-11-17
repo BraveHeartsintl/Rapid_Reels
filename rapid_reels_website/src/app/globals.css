@@ -1,22 +1,59 @@
 @import "tailwindcss";
 
 :root {
-  /* Palette: near-black base with a sunset gradient — orange, pink/magenta, violet, indigo */
-  --rr-bg: #07040d;
-  --rr-primary: #b23ff0;
-  --rr-secondary: #f58a4c;
-  --rr-primary-dark: #4a2cff;
-  --rr-surface: #100b1a;
-  --rr-card: #181226;
-  --rr-surface-elevated: #231a38;
+  /* ---------- Flashoot design tokens (see design guide, section 10) ---------- */
+  --color-primary: #fe002a;
+  --color-primary-hover: #d90023;
+  --color-primary-soft: #ffe5ea;
+  --color-ink: #0b0b0f;
+  --color-text: #1f1f26;
+  --color-muted: #6b6b76;
+  --color-border: #e6e6eb;
+  --color-surface: #f6f6f8;
+
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 4px 20px rgba(11, 11, 15, 0.08);
+  --shadow-raised: 0 12px 40px rgba(11, 11, 15, 0.16);
+  --shadow-glow: 0 8px 24px rgba(254, 0, 42, 0.35);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  --ease-fast: 200ms ease-out;
+
+  /* ---------- App palette: dark-ink variant, aliased to the tokens above ----------
+     Dark surface ramp is derived from ink (the guide only defines light neutrals). */
+  --rr-bg: var(--color-ink);
+  --rr-primary: var(--color-primary);
+  --rr-primary-dark: var(--color-primary-hover);
+  --rr-secondary: #ff4d6a;
+  --rr-accent: #ff4d6a;
+  --rr-surface: #121218;
+  --rr-card: #1a1a22;
+  --rr-surface-elevated: #23232d;
   --rr-text: #ffffff;
-  --rr-text-secondary: #f1e8ff;
-  --rr-text-tertiary: #b3a4cc;
-  --rr-gradient: linear-gradient(135deg, #f58a4c 0%, #e85aa8 40%, #b23ff0 70%, #4a2cff 100%);
-  --rr-success: #4ade80;
-  --rr-warning: #f2b544;
-  --rr-error: #e57373;
-  --rr-outline: #3a2a5c;
+  --rr-text-secondary: #d4d4dc;
+  --rr-text-tertiary: #9a9aa5;
+  --rr-gradient: linear-gradient(135deg, #fe002a 0%, #ff4d6a 100%);
+  --rr-gradient-text: linear-gradient(90deg, #ff4d6a 0%, #fe002a 100%);
+  --rr-success: #12b76a;
+  --rr-warning: #f79009;
+  /* Lighter than the guide's #D92D20 so error text stays readable on ink */
+  --rr-error: #f04438;
+  --rr-error-solid: #d92d20;
+  --rr-outline: #2e2e3a;
+
   --background: var(--rr-bg);
   --foreground: var(--rr-text);
 }
@@ -24,7 +61,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-display), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 * {
@@ -38,6 +75,26 @@ html {
 body {
   background: var(--rr-bg);
   color: var(--rr-text);
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Visible focus ring on all interactive elements */
+:focus-visible {
+  outline: 3px solid rgba(254, 0, 42, 0.4);
+  outline-offset: 2px;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  transition-timing-function: ease-out;
 }
 
 @keyframes fadeUp {
@@ -60,18 +117,92 @@ body {
   }
 }
 
+@keyframes glowShift {
+  0% {
+    background-position: 0% 0%, 100% 100%, 0 0;
+  }
+  50% {
+    background-position: 10% 8%, 92% 92%, 0 0;
+  }
+  100% {
+    background-position: 0% 0%, 100% 100%, 0 0;
+  }
+}
+
 .animate-fade-up {
-  animation: fadeUp 0.7s ease both;
+  animation: fadeUp 0.5s ease-out both;
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.8s ease both;
+  animation: fadeIn 0.5s ease-out both;
 }
 
+/* Ink hero with a subtle red glow, used behind the landing hero */
 .hero-glow {
-  background:
-    radial-gradient(ellipse 70% 55% at 15% 25%, rgba(245, 138, 76, 0.32), transparent 60%),
-    radial-gradient(ellipse 80% 60% at 55% 30%, rgba(178, 63, 240, 0.38), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 85% 70%, rgba(74, 44, 255, 0.35), transparent 55%),
-    linear-gradient(180deg, #07040d 0%, #170a2b 45%, #07040d 100%);
+  background-color: var(--rr-bg);
+  background-image:
+    radial-gradient(ellipse 60% 55% at 100% 0%, rgba(254, 0, 42, 0.28), transparent 65%),
+    radial-gradient(ellipse 55% 55% at 0% 100%, rgba(254, 0, 42, 0.14), transparent 65%),
+    linear-gradient(180deg, #0b0b0f 0%, #14090d 50%, #0b0b0f 100%);
+  background-size: 130% 130%, 130% 130%, 100% 100%;
+  background-repeat: no-repeat;
+  animation: glowShift 18s ease-in-out infinite;
+}
+
+/* Gradient-filled text for highlighted words */
+.text-gradient {
+  background-image: var(--rr-gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@property --rainbow-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes rainbowSpin {
+  to {
+    --rainbow-angle: 360deg;
+  }
+}
+
+.rainbow-ring {
+  background: conic-gradient(
+    from var(--rainbow-angle),
+    #ff2d55,
+    #ff6a00,
+    #ffd60a,
+    #32d74b,
+    #64d2ff,
+    #5e5ce6,
+    #bf5af2,
+    #ff2d55
+  );
+  animation: rainbowSpin 8s linear infinite;
+}
+
+.rainbow-glow {
+  background: linear-gradient(90deg, #ff2d55, #ff6a00, #ffd60a, #32d74b, #64d2ff, #5e5ce6, #bf5af2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .hero-glow,
+  .animate-fade-up,
+  .animate-fade-in,
+  .rainbow-ring {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }
