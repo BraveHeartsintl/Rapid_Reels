@@ -32,7 +32,7 @@ export default function Page() {
     >
       <AsyncView state={state} empty="No providers match yet. Try another event type or city.">
         {(providers) => (
-          <div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {providers.map((p) => (
               <ProviderCard key={p.id} provider={p} />
             ))}

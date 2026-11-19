@@ -18,7 +18,7 @@ export default function MyReelsPage() {
       <PageHeader title="My Reels" subtitle="Delivered from your bookings" />
       <AsyncView state={state} empty="No reels yet. They appear here once your provider delivers them.">
         {(reels) => (
-          <div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {reels.map((r) => (
               <Link key={r.id} href={`/reel-player?id=${r.id}`}>
                 <Card className="mb-3 flex items-center justify-between">

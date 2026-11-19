@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { FlowScreen } from "@/components/layout/FlowScreen";
 import { BookingCard } from "@/components/booking/BookingCard";
-import { SignOutButton } from "@/components/auth/SignOutButton";
 import { Button } from "@/components/ui/Button";
 import { Badge, Card } from "@/components/ui/Card";
 import { AsyncView, ErrorState, Loading } from "@/components/ui/State";
@@ -37,7 +36,7 @@ export default function Page() {
       ) : error ? (
         <ErrorState message={error} onRetry={reload} />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-8">
           {provider && provider.verificationStatus !== "approved" ? (
             <Card className="border-[var(--rr-warning)]/50">
               <div className="flex items-center justify-between gap-3">
@@ -54,14 +53,15 @@ export default function Page() {
             </Card>
           ) : null}
 
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <Card className="p-3"><p className="text-xl font-semibold text-white">{(provider?.rating ?? 0).toFixed(1)}</p><p className="text-[10px] text-[var(--rr-text-tertiary)]">Rating</p></Card>
-            <Card className="p-3"><p className="text-xl font-semibold text-white">{provider?.totalEventsCompleted ?? 0}</p><p className="text-[10px] text-[var(--rr-text-tertiary)]">Events done</p></Card>
-            <Card className="p-3"><p className="text-xl font-semibold text-white">{provider?.totalReelsDelivered ?? 0}</p><p className="text-[10px] text-[var(--rr-text-tertiary)]">Reels</p></Card>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card><p className="text-3xl font-bold text-white">{(provider?.rating ?? 0).toFixed(1)}</p><p className="mt-1 text-sm text-[var(--rr-text-tertiary)]">Rating</p></Card>
+            <Card><p className="text-3xl font-bold text-white">{provider?.totalEventsCompleted ?? 0}</p><p className="mt-1 text-sm text-[var(--rr-text-tertiary)]">Events done</p></Card>
+            <Card><p className="text-3xl font-bold text-white">{provider?.totalReelsDelivered ?? 0}</p><p className="mt-1 text-sm text-[var(--rr-text-tertiary)]">Reels</p></Card>
           </div>
 
+          <div className="grid items-start gap-8 xl:grid-cols-[1.4fr_1fr]">
           <section>
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-[var(--rr-text-secondary)]">Upcoming &amp; requests</h2>
               <Link href="/provider-bookings" className="text-xs text-[var(--rr-secondary)]">See all</Link>
             </div>
@@ -85,15 +85,15 @@ export default function Page() {
             </AsyncView>
           </section>
 
-          <div className="space-y-2">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             {links.map(([href, label]) => (
-              <Link key={href} href={href} className="flex justify-between rounded-2xl bg-[var(--rr-card)] px-4 py-3 text-sm text-white">
+              <Link key={href} href={href} className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--rr-outline)]/60 bg-[var(--rr-card)] px-4 py-4 text-sm font-medium text-white transition hover:border-[var(--color-primary)]">
                 {label}
                 <span className="text-[var(--rr-text-tertiary)]">→</span>
               </Link>
             ))}
           </div>
-          <SignOutButton className="block w-full text-center" />
+          </div>
         </div>
       )}
     </FlowScreen>

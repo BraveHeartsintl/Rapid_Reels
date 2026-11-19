@@ -5,6 +5,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/layout/FlowScreen";
 import { Button } from "@/components/ui/Button";
 import { Badge, Card } from "@/components/ui/Card";
+import { DataTable, TD, TH, THead, TR } from "@/components/ui/DataTable";
 import { Input } from "@/components/ui/Input";
 import { AsyncView, Notice } from "@/components/ui/State";
 import { deleteOffer, listAllOffers, saveOffer } from "@/lib/data/queries";
@@ -137,28 +138,42 @@ export default function Page() {
       {error ? <Notice>{error}</Notice> : null}
       <AsyncView state={state} empty="No offers yet.">
         {(rows) => (
-          <div className="space-y-2">
-            {rows.map((o) => {
-              const d = o.discount;
-              const label = d?.percentage ? `${d.percentage}% off` : d?.amount ? `£${d.amount} off` : "—";
-              return (
-                <Card key={o.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-                  <div>
-                    <p className="font-medium text-white">{o.code} <span className="font-normal text-[var(--rr-text-tertiary)]">· {o.title}</span></p>
-                    <p className="text-xs text-[var(--rr-text-tertiary)]">
-                      {label} · used {o.usedCount ?? 0}{o.maxUses ? `/${o.maxUses}` : ""} · ends {fmtDate(toDate(o.validity?.endDate ?? o.expiresAt))}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge tone={o.isActive ? "success" : "muted"}>{o.isActive ? "Active" : "Inactive"}</Badge>
-                    {o.isPublic ? null : <Badge tone="muted">Hidden</Badge>}
-                    <button type="button" className="text-xs text-[var(--rr-secondary)]" onClick={() => setEditing(o)}>Edit</button>
-                    <button type="button" className="text-xs text-[var(--rr-error)]" onClick={() => remove(o.id)}>Delete</button>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+          <DataTable>
+            <THead>
+              <TH>Code</TH>
+              <TH>Offer</TH>
+              <TH>Uses</TH>
+              <TH>Ends</TH>
+              <TH>Status</TH>
+              <TH />
+            </THead>
+            <tbody>
+              {rows.map((o) => {
+                const d = o.discount;
+                const label = d?.percentage ? `${d.percentage}% off` : d?.amount ? `£${d.amount} off` : "—";
+                return (
+                  <TR key={o.id}>
+                    <TD className="font-medium text-white">{o.code}</TD>
+                    <TD>{o.title} · {label}</TD>
+                    <TD>{o.usedCount ?? 0}{o.maxUses ? `/${o.maxUses}` : ""}</TD>
+                    <TD>{fmtDate(toDate(o.validity?.endDate ?? o.expiresAt))}</TD>
+                    <TD>
+                      <div className="flex gap-2">
+                        <Badge tone={o.isActive ? "success" : "muted"}>{o.isActive ? "Active" : "Inactive"}</Badge>
+                        {o.isPublic ? null : <Badge tone="muted">Hidden</Badge>}
+                      </div>
+                    </TD>
+                    <TD>
+                      <div className="flex justify-end gap-3">
+                        <button type="button" className="text-sm font-semibold text-[var(--rr-secondary)]" onClick={() => setEditing(o)}>Edit</button>
+                        <button type="button" className="text-sm font-semibold text-[var(--rr-error)]" onClick={() => remove(o.id)}>Delete</button>
+                      </div>
+                    </TD>
+                  </TR>
+                );
+              })}
+            </tbody>
+          </DataTable>
         )}
       </AsyncView>
     </div>

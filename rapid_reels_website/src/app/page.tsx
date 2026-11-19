@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { MarketingFooter, MarketingNav } from "@/components/layout/MarketingChrome";
 import { CtaBanner } from "@/components/home/CtaBanner";
 import { FaqAccordion } from "@/components/home/FaqAccordion";
@@ -20,15 +21,10 @@ export default function HomePage() {
         </div>
         <div className="relative mx-auto grid w-full max-w-6xl animate-fade-up items-center gap-10 md:grid-cols-2">
           <div>
-            <Image
-              src="/logo.png"
-              alt="Rapid Reels"
-              width={634}
-              height={418}
-              priority
-              className="mb-6 h-auto w-56 object-contain drop-shadow-[0_0_30px_rgba(254,0,42,0.45)] sm:w-72"
-            />
-            <h1 className="sr-only">Rapid Reels</h1>
+            <h1 className="mb-6 max-w-xl text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Capture Every Moment,{" "}
+              <span className="text-gradient">Share It Instantly</span>
+            </h1>
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-[var(--rr-accent)] backdrop-blur">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--rr-accent)]" />
               Book verified event creators
@@ -85,9 +81,10 @@ export default function HomePage() {
           </p>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {eventTypes.map((e, i) => (
-              <div
+              <Link
                 key={e.id}
-                className="animate-fade-in rounded-2xl border border-[var(--rr-outline)]/50 bg-[var(--rr-surface)] p-5"
+                href={`/discover?type=${e.id}`}
+                className="animate-fade-in block rounded-2xl border border-[var(--rr-outline)]/50 bg-[var(--rr-surface)] p-5 transition hover:-translate-y-0.5 hover:border-[var(--rr-primary)]/60 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--rr-primary)]"
                 style={{ animationDelay: `${i * 80}ms` }}
               >
                 <div
@@ -95,7 +92,7 @@ export default function HomePage() {
                   style={{ background: e.color }}
                 />
                 <p className="font-medium text-white">{e.label}</p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

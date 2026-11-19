@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Badge, Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Card";
+import { DataTable, TD, TH, THead, TR } from "@/components/ui/DataTable";
 import { AsyncView, Notice } from "@/components/ui/State";
 import { listAllReels, moderateReel } from "@/lib/data/queries";
 import { errorMessage, titleCase } from "@/lib/format";
@@ -45,31 +46,41 @@ export function ReelModerationList({ initial }: { initial: Filter }) {
           const filtered = rows.filter((r) => filter === "all" || (r.moderationStatus ?? "approved") === filter);
           if (filtered.length === 0) return <p className="text-sm text-[var(--rr-text-tertiary)]">No reels in this category.</p>;
           return (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((r) => {
-                const status = r.moderationStatus ?? "approved";
-                return (
-                  <Card key={r.id} className="space-y-3 p-3">
-                    {r.videoUrl ? (
-                      <video src={r.videoUrl} poster={r.thumbnailUrl} controls preload="none" className="aspect-[9/16] max-h-80 w-full rounded-xl bg-black object-contain" />
-                    ) : (
-                      <div className="flex aspect-video items-center justify-center rounded-xl bg-white/5 text-xs text-[var(--rr-text-tertiary)]">No video</div>
-                    )}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-white">{r.title || r.eventName || "Reel"}</p>
-                        <p className="text-xs text-[var(--rr-text-tertiary)]">{titleCase(r.eventType)} · provider {r.providerId?.slice(0, 6)}</p>
-                      </div>
-                      <Badge tone={status === "approved" ? "success" : status === "rejected" ? "warning" : "muted"}>{titleCase(status)}</Badge>
-                    </div>
-                    <div className="flex gap-2">
-                      {status !== "approved" ? <Button type="button" className="flex-1 px-3 py-2 text-xs" disabled={busyId === r.id} onClick={() => act(r.id, "approve")}>Approve</Button> : null}
-                      {status !== "rejected" ? <Button type="button" variant="danger" className="flex-1 px-3 py-2 text-xs" disabled={busyId === r.id} onClick={() => act(r.id, "reject")}>{status === "approved" ? "Take down" : "Reject"}</Button> : null}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
+            <DataTable>
+              <THead>
+                <TH>Preview</TH>
+                <TH>Reel</TH>
+                <TH>Status</TH>
+                <TH />
+              </THead>
+              <tbody>
+                {filtered.map((r) => {
+                  const status = r.moderationStatus ?? "approved";
+                  return (
+                    <TR key={r.id}>
+                      <TD>
+                        {r.videoUrl ? (
+                          <video src={r.videoUrl} poster={r.thumbnailUrl} controls preload="none" className="h-28 w-16 rounded-lg bg-black object-cover" />
+                        ) : (
+                          <div className="flex h-28 w-16 items-center justify-center rounded-lg bg-white/5 text-[10px] text-[var(--rr-text-tertiary)]">None</div>
+                        )}
+                      </TD>
+                      <TD>
+                        <p className="font-medium text-white">{r.title || r.eventName || "Reel"}</p>
+                        <p className="text-xs">{titleCase(r.eventType)} · provider {r.providerId?.slice(0, 6)}</p>
+                      </TD>
+                      <TD><Badge tone={status === "approved" ? "success" : status === "rejected" ? "warning" : "muted"}>{titleCase(status)}</Badge></TD>
+                      <TD>
+                        <div className="flex justify-end gap-2">
+                          {status !== "approved" ? <Button type="button" className="px-3 py-2 text-xs" disabled={busyId === r.id} onClick={() => act(r.id, "approve")}>Approve</Button> : null}
+                          {status !== "rejected" ? <Button type="button" variant="danger" className="px-3 py-2 text-xs" disabled={busyId === r.id} onClick={() => act(r.id, "reject")}>{status === "approved" ? "Take down" : "Reject"}</Button> : null}
+                        </div>
+                      </TD>
+                    </TR>
+                  );
+                })}
+              </tbody>
+            </DataTable>
           );
         }}
       </AsyncView>

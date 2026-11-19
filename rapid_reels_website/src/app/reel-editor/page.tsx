@@ -60,7 +60,7 @@ export default function Page() {
   const state = useAsync(() => getReel(id!), [id], query.ready && Boolean(id));
 
   return (
-    <FlowScreen title="Edit reel" subtitle="Update how this reel is described" backHref="/provider-my-reels">
+    <FlowScreen title="Edit reel" subtitle="Update how this reel is described" backHref="/provider-my-reels" width="form">
       {query.ready && !id ? (
         <Empty>No reel selected. <a href="/provider-my-reels" className="underline">My reels</a></Empty>
       ) : (

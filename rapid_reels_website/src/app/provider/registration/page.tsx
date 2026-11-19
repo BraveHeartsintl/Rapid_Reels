@@ -12,12 +12,15 @@ import { errorMessage, generateReferralCode } from "@/lib/format";
 export default function ProviderRegistrationPage() {
   const router = useRouter();
   const { user, profile, loading, refreshProfile } = useAuth();
+  // Prefill from the Google account when signing in with Google.
   const [businessName, setBusinessName] = useState("");
-  const [ownerName, setOwnerName] = useState("");
-  const [email, setEmail] = useState("");
+  const [ownerNameEdit, setOwnerName] = useState<string | null>(null);
+  const [emailEdit, setEmail] = useState<string | null>(null);
   const [city, setCity] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const ownerName = ownerNameEdit ?? user?.displayName ?? "";
+  const email = emailEdit ?? user?.email ?? "";
 
   useEffect(() => {
     if (loading || busy) return;
@@ -76,7 +79,7 @@ export default function ProviderRegistrationPage() {
           <Input label="Owner name" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required />
           <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <Input label="City" value={city} onChange={(e) => setCity(e.target.value)} required />
-          <Input label="Phone" type="tel" value={user?.phoneNumber ?? ""} readOnly />
+          {user?.phoneNumber ? <Input label="Phone" type="tel" value={user.phoneNumber} readOnly /> : null}
           {error ? <Notice>{error}</Notice> : null}
           <Button type="submit" className="w-full" disabled={busy || !user}>
             {busy ? "Creating…" : "Continue onboarding"}

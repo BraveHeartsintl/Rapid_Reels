@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/FlowScreen";
 import { Badge, Card } from "@/components/ui/Card";
+import { DataTable, TD, TH, THead, TR } from "@/components/ui/DataTable";
 import { AsyncView } from "@/components/ui/State";
 import { listAllPayments } from "@/lib/data/queries";
 import { toDate } from "@/lib/data/types";
@@ -34,20 +35,26 @@ export default function Page() {
                   <button key={s} type="button" onClick={() => setFilter(s)} className={cn("rounded-full px-3 py-1 text-xs capitalize", filter === s ? "bg-[var(--rr-primary)] text-white" : "bg-[var(--rr-card)] text-[var(--rr-text-tertiary)]")}>{s}</button>
                 ))}
               </div>
-              <div className="space-y-2">
-                {filtered.map((r) => (
-                  <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-                    <div>
-                      <p className="font-medium text-white">{fmtMoney(r.amount, r.currency)}</p>
-                      <p className="text-xs text-[var(--rr-text-tertiary)]">
-                        {fmtDateTime(toDate(r.createdAt))} · booking #{r.bookingId?.slice(0, 8)} · {titleCase(r.paymentMethodType)}
-                      </p>
-                      <p className="text-xs text-[var(--rr-text-tertiary)]">{r.id}</p>
-                    </div>
-                    <Badge tone={r.status === "succeeded" ? "success" : r.status === "failed" ? "warning" : "muted"}>{titleCase(r.status)}</Badge>
-                  </Card>
-                ))}
-              </div>
+              <DataTable>
+                <THead>
+                  <TH>Amount</TH>
+                  <TH>When</TH>
+                  <TH>Booking</TH>
+                  <TH>Method</TH>
+                  <TH>Status</TH>
+                </THead>
+                <tbody>
+                  {filtered.map((r) => (
+                    <TR key={r.id}>
+                      <TD className="font-medium text-white">{fmtMoney(r.amount, r.currency)}</TD>
+                      <TD>{fmtDateTime(toDate(r.createdAt))}</TD>
+                      <TD>#{r.bookingId?.slice(0, 8)}</TD>
+                      <TD>{titleCase(r.paymentMethodType)}</TD>
+                      <TD><Badge tone={r.status === "succeeded" ? "success" : r.status === "failed" ? "warning" : "muted"}>{titleCase(r.status)}</Badge></TD>
+                    </TR>
+                  ))}
+                </tbody>
+              </DataTable>
             </div>
           );
         }}

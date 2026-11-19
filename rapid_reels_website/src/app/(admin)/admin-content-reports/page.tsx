@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/FlowScreen";
 import { Button } from "@/components/ui/Button";
-import { Badge, Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Card";
+import { DataTable, TD, TH, THead, TR } from "@/components/ui/DataTable";
 import { AsyncView, Notice } from "@/components/ui/State";
 import { listContentReports, moderateReel, resolveContentReport } from "@/lib/data/queries";
 import { toDate } from "@/lib/data/types";
@@ -44,29 +45,37 @@ export default function Page() {
           const filtered = rows.filter((r) => filter === "all" || (r.status ?? "pending") === filter);
           if (filtered.length === 0) return <p className="text-sm text-[var(--rr-text-tertiary)]">Nothing in this category.</p>;
           return (
-            <div className="space-y-2">
-              {filtered.map((r) => (
-                <Card key={r.id} className="space-y-2 py-3 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium text-white">{titleCase(r.reason)}</p>
-                    <Badge tone={r.status === "resolved" ? "success" : r.status === "dismissed" ? "muted" : "warning"}>{titleCase(r.status ?? "pending")}</Badge>
-                  </div>
-                  {r.details ? <p className="text-[var(--rr-text-secondary)]">{r.details}</p> : null}
-                  <p className="text-xs text-[var(--rr-text-tertiary)]">
-                    {titleCase(r.reportType ?? "reel")} · {fmtDate(toDate(r.createdAt))}
-                    {r.reelId ? ` · reel ${r.reelId.slice(0, 8)}` : ""}
-                  </p>
-                  {r.adminNote ? <p className="text-xs text-[var(--rr-text-tertiary)]">Note: {r.adminNote}</p> : null}
-                  {(r.status ?? "pending") === "pending" ? (
-                    <div className="flex flex-wrap gap-2">
-                      {r.reelId ? <Button type="button" variant="danger" className="px-3 py-1.5 text-xs" onClick={() => act(r.id, "resolved", r.reelId)}>Remove reel &amp; resolve</Button> : null}
-                      <Button type="button" className="px-3 py-1.5 text-xs" onClick={() => act(r.id, "resolved")}>Mark resolved</Button>
-                      <Button type="button" variant="ghost" className="px-3 py-1.5 text-xs" onClick={() => act(r.id, "dismissed")}>Dismiss</Button>
-                    </div>
-                  ) : null}
-                </Card>
-              ))}
-            </div>
+            <DataTable>
+              <THead>
+                <TH>Reason</TH>
+                <TH>Details</TH>
+                <TH>When</TH>
+                <TH>Status</TH>
+                <TH />
+              </THead>
+              <tbody>
+                {filtered.map((r) => (
+                  <TR key={r.id}>
+                    <TD className="font-medium text-white">{titleCase(r.reason)}</TD>
+                    <TD>
+                      <p>{r.details || "—"}</p>
+                      <p className="text-xs">{titleCase(r.reportType ?? "reel")}{r.reelId ? ` · ${r.reelId.slice(0, 8)}` : ""}{r.adminNote ? ` · ${r.adminNote}` : ""}</p>
+                    </TD>
+                    <TD>{fmtDate(toDate(r.createdAt))}</TD>
+                    <TD><Badge tone={r.status === "resolved" ? "success" : r.status === "dismissed" ? "muted" : "warning"}>{titleCase(r.status ?? "pending")}</Badge></TD>
+                    <TD>
+                      {(r.status ?? "pending") === "pending" ? (
+                        <div className="flex flex-wrap justify-end gap-2">
+                          {r.reelId ? <Button type="button" variant="danger" className="px-3 py-1.5 text-xs" onClick={() => act(r.id, "resolved", r.reelId)}>Remove reel</Button> : null}
+                          <Button type="button" className="px-3 py-1.5 text-xs" onClick={() => act(r.id, "resolved")}>Resolve</Button>
+                          <Button type="button" variant="ghost" className="px-3 py-1.5 text-xs" onClick={() => act(r.id, "dismissed")}>Dismiss</Button>
+                        </div>
+                      ) : null}
+                    </TD>
+                  </TR>
+                ))}
+              </tbody>
+            </DataTable>
           );
         }}
       </AsyncView>

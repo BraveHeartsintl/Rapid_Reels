@@ -141,7 +141,7 @@ function ProfileForm({ uid, provider }: { uid: string; provider: ProviderDoc }) 
 export default function Page() {
   const state = useProviderDoc();
   return (
-    <FlowScreen title="Business profile" subtitle="What customers see about your studio" backHref="/provider-dashboard">
+    <FlowScreen title="Business profile" subtitle="What customers see about your studio" backHref="/provider-dashboard" width="form">
       <AsyncView state={state} empty="Provider profile not found." isEmpty={(d) => !d}>
         {(p) => <ProfileForm uid={state.uid!} provider={p} />}
       </AsyncView>

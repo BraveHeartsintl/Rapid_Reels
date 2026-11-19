@@ -57,7 +57,7 @@ function BankForm({ uid, provider }: { uid: string; provider: ProviderDoc }) {
 export default function Page() {
   const state = useProviderDoc();
   return (
-    <FlowScreen title="Bank details" subtitle="Where your payouts are sent" backHref="/provider-dashboard">
+    <FlowScreen title="Bank details" subtitle="Where your payouts are sent" backHref="/provider-dashboard" width="form">
       <AsyncView state={state} empty="Provider profile not found." isEmpty={(d) => !d}>
         {(p) => <BankForm uid={state.uid!} provider={p} />}
       </AsyncView>

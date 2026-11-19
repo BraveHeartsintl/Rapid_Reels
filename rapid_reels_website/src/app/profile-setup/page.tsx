@@ -15,8 +15,11 @@ export default function ProfileSetupPage() {
   const router = useRouter();
   const { user, profile, loading, refreshProfile } = useAuth();
   const query = useQuery();
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
+  const [fullNameEdit, setFullName] = useState<string | null>(null);
+  const [emailEdit, setEmail] = useState<string | null>(null);
+  // Prefill from the Google account when signing in with Google.
+  const fullName = fullNameEdit ?? user?.displayName ?? "";
+  const email = emailEdit ?? user?.email ?? "";
   const [gender, setGender] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [marketing, setMarketing] = useState(false);
@@ -35,7 +38,7 @@ export default function ProfileSetupPage() {
     setError(null);
     setBusy(true);
     try {
-      let profileImage: string | null = null;
+      let profileImage: string | null = user.photoURL ?? null;
       if (photo) {
         const up = await uploadFile(`user_profile_pics/${user.uid}/${safeFileName(photo.name)}`, photo);
         profileImage = up.url;

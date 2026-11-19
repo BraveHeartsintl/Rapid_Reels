@@ -6,7 +6,8 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Notice } from "@/components/ui/State";
-import { homeForRole, toE164, useAuth } from "@/lib/auth/AuthProvider";
+import { toE164, useAuth } from "@/lib/auth/AuthProvider";
+import { resolvePostLogin, type LoginRole } from "@/lib/auth/postLogin";
 import { errorMessage } from "@/lib/format";
 import { useQuery } from "@/lib/hooks";
 
@@ -34,22 +35,11 @@ export default function OtpPage() {
     setBusy(true);
     try {
       const { profile } = await confirmOtp(code.trim());
-      const safeNext = next && next.startsWith("/") ? next : null;
-      const type = profile?.userType;
-
-      if (role === "admin") {
-        if (type === "admin" || type === "superadmin") return router.replace(safeNext ?? "/admin-dashboard");
-        await signOut();
-        setError("This phone number does not have admin access.");
-      } else if (role === "provider") {
-        if (!profile) return router.replace("/provider/registration");
-        if (type === "provider") return router.replace(safeNext ?? "/provider-dashboard");
-        await signOut();
-        setError("This number is registered as a customer. Use customer sign-in instead.");
-      } else {
-        if (!profile) return router.replace(`/profile-setup${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`);
-        return router.replace(safeNext ?? homeForRole(type));
-      }
+      const authRole: LoginRole = role === "provider" || role === "admin" ? role : "customer";
+      const result = resolvePostLogin(authRole, profile, next);
+      if (result.kind === "redirect") return router.replace(result.to);
+      await signOut();
+      setError(result.message);
       setBusy(false);
     } catch (err) {
       setError(errorMessage(err));

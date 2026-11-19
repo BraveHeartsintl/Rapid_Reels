@@ -46,7 +46,7 @@ export default function Page() {
   return (
     <div>
       <PageHeader title="Edit profile" />
-      <form onSubmit={save} className="space-y-4">
+      <form onSubmit={save} className="max-w-3xl space-y-4">
         <Input label="Full name" value={name ?? profile?.fullName ?? ""} onChange={(e) => setName(e.target.value)} required />
         <Input label="Email" type="email" value={email ?? profile?.email ?? ""} onChange={(e) => setEmail(e.target.value)} />
         <Input label="Phone" value={profile?.phoneNumber ?? user?.phoneNumber ?? ""} readOnly />

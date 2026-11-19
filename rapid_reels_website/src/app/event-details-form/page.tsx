@@ -65,7 +65,7 @@ export default function Page() {
   }
 
   return (
-    <FlowScreen title="Event details" subtitle="Tell us about the day" backHref="/package-customization">
+    <FlowScreen title="Event details" subtitle="Tell us about the day" backHref="/package-customization" width="form">
       <form onSubmit={submit} className="space-y-4">
         <Input label="Event title" value={values.eventName} onChange={set("eventName")} placeholder="Priya & Arjun Wedding" required />
         <Input label="Date" type="date" value={values.eventDate} min={dateKeyLocal(new Date())} onChange={set("eventDate")} required />

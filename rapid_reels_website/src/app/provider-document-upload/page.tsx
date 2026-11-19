@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card";
 
 export default function Page() {
   return (
-    <FlowScreen title="Documents" subtitle="Identity documents are handled by our verification partner" backHref="/provider-verification">
+    <FlowScreen title="Documents" subtitle="Identity documents are handled by our verification partner" backHref="/provider-verification" width="form">
       <div className="space-y-4">
         <Card className="space-y-2 text-sm text-[var(--rr-text-secondary)]">
           <p>

@@ -44,7 +44,7 @@ export default function Page() {
             const packages = allowed.length ? allowed : all;
             if (packages.length === 0) return <Empty>This provider has not published packages yet.</Empty>;
             return (
-              <div className="space-y-3">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {packages.map((p) => (
                   <button
                     key={p.packageId}

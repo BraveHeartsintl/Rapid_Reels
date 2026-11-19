@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/layout/FlowScreen";
 import { Button } from "@/components/ui/Button";
-import { Badge, Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Card";
+import { DataTable, TD, TH, THead, TR } from "@/components/ui/DataTable";
 import { AsyncView, Notice } from "@/components/ui/State";
 import { listAllProviders, updateProvider } from "@/lib/data/queries";
 import { errorMessage, titleCase } from "@/lib/format";
@@ -54,31 +55,42 @@ export default function Page() {
           const filtered = rows.filter((p) => filter === "all" || (p.verificationStatus ?? "pending") === filter);
           if (filtered.length === 0) return <p className="text-sm text-[var(--rr-text-tertiary)]">Nothing in this category.</p>;
           return (
-            <div className="space-y-2">
-              {filtered.map((p) => {
-                const veriff = (p.metadata as { veriff?: { status?: string } } | undefined)?.veriff?.status;
-                return (
-                  <Card key={p.id} className="space-y-2 py-3 text-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
+            <DataTable>
+              <THead>
+                <TH>Studio</TH>
+                <TH>Contact</TH>
+                <TH>Coverage</TH>
+                <TH>Status</TH>
+                <TH />
+              </THead>
+              <tbody>
+                {filtered.map((p) => {
+                  const veriff = (p.metadata as { veriff?: { status?: string } } | undefined)?.veriff?.status;
+                  return (
+                    <TR key={p.id}>
+                      <TD>
                         <p className="font-medium text-white">{p.businessName || "Unnamed studio"}</p>
-                        <p className="text-xs text-[var(--rr-text-tertiary)]">{[p.ownerName, p.phoneNumber, p.email].filter(Boolean).join(" · ")}</p>
-                        <p className="text-xs text-[var(--rr-text-tertiary)]">{[p.location?.city, p.eventTypes?.join(", ")].filter(Boolean).join(" · ")}</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge tone={p.verificationStatus === "approved" ? "success" : p.verificationStatus === "rejected" ? "warning" : "muted"}>{titleCase(p.verificationStatus ?? "pending")}</Badge>
-                        {veriff ? <Badge tone="secondary">ID check: {titleCase(veriff)}</Badge> : <Badge tone="muted">ID check not started</Badge>}
-                      </div>
-                    </div>
-                    {p.rejectionReason ? <p className="text-xs text-[var(--rr-error)]">Rejected: {p.rejectionReason}</p> : null}
-                    <div className="flex gap-2">
-                      {p.verificationStatus !== "approved" ? <Button type="button" className="px-3 py-1.5 text-xs" onClick={() => decide(p.id, true)}>Approve</Button> : null}
-                      {p.verificationStatus !== "rejected" ? <Button type="button" variant="danger" className="px-3 py-1.5 text-xs" onClick={() => decide(p.id, false)}>Reject</Button> : null}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
+                        {p.rejectionReason ? <p className="text-xs text-[var(--rr-error)]">Rejected: {p.rejectionReason}</p> : null}
+                      </TD>
+                      <TD>{[p.ownerName, p.phoneNumber, p.email].filter(Boolean).join(" · ")}</TD>
+                      <TD>{[p.location?.city, p.eventTypes?.join(", ")].filter(Boolean).join(" · ")}</TD>
+                      <TD>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge tone={p.verificationStatus === "approved" ? "success" : p.verificationStatus === "rejected" ? "warning" : "muted"}>{titleCase(p.verificationStatus ?? "pending")}</Badge>
+                          {veriff ? <Badge tone="secondary">ID {titleCase(veriff)}</Badge> : <Badge tone="muted">No ID check</Badge>}
+                        </div>
+                      </TD>
+                      <TD>
+                        <div className="flex justify-end gap-2">
+                          {p.verificationStatus !== "approved" ? <Button type="button" className="px-3 py-1.5 text-xs" onClick={() => decide(p.id, true)}>Approve</Button> : null}
+                          {p.verificationStatus !== "rejected" ? <Button type="button" variant="danger" className="px-3 py-1.5 text-xs" onClick={() => decide(p.id, false)}>Reject</Button> : null}
+                        </div>
+                      </TD>
+                    </TR>
+                  );
+                })}
+              </tbody>
+            </DataTable>
           );
         }}
       </AsyncView>

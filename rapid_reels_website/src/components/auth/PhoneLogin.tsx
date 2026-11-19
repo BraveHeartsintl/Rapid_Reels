@@ -8,8 +8,10 @@ import { Notice } from "@/components/ui/State";
 import { toE164, useAuth } from "@/lib/auth/AuthProvider";
 import { errorMessage } from "@/lib/format";
 import { useQuery } from "@/lib/hooks";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import type { LoginRole } from "@/lib/auth/postLogin";
 
-export type LoginRole = "customer" | "provider" | "admin";
+export type { LoginRole };
 
 /** Phone number entry shared by the customer, provider and admin login pages. */
 export function PhoneLogin({ role, children }: { role: LoginRole; children?: React.ReactNode }) {
@@ -74,6 +76,16 @@ export function PhoneLogin({ role, children }: { role: LoginRole; children?: Rea
       <p className="text-center text-xs text-[var(--rr-text-tertiary)]">
         You will receive a one-time 6-digit code by SMS.
       </p>
+      {role !== "admin" ? (
+        <>
+          <div className="flex items-center gap-3 text-xs uppercase tracking-wider text-[var(--rr-text-tertiary)]">
+            <span className="h-px flex-1 bg-white/10" />
+            or
+            <span className="h-px flex-1 bg-white/10" />
+          </div>
+          <GoogleSignInButton role={role} disabled={busy || !configured} />
+        </>
+      ) : null}
       {children}
     </form>
   );

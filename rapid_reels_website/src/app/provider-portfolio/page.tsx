@@ -24,7 +24,7 @@ export default function Page() {
       ) : (
         <AsyncView state={state} empty="This provider has no published reels yet.">
           {(reels) => (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {reels.map((r) => (
                 <ReelTile key={r.id} reel={r} href={`/reel-player?id=${r.id}`} showStats />
               ))}

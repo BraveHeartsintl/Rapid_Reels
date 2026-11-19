@@ -79,6 +79,7 @@ export default function Page() {
       title="Payment"
       subtitle="Secure checkout with Stripe"
       backHref={bookingId ? `/event-details-view?id=${bookingId}` : "/booking-summary"}
+      width="form"
     >
       {query.ready && !bookingId ? (
         <Empty>No booking to pay for.</Empty>

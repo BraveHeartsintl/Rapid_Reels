@@ -27,10 +27,10 @@ export default function Page() {
       {ready && !providerId ? (
         <Empty>No provider selected.</Empty>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <AsyncView state={state} empty="This provider has no catalogue offerings. Choose a package directly.">
             {(items) => (
-              <>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {items.map((i) => (
                   <button
                     key={i.id}
@@ -65,7 +65,7 @@ export default function Page() {
                     </Card>
                   </button>
                 ))}
-              </>
+              </div>
             )}
           </AsyncView>
           <Button

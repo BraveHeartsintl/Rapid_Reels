@@ -26,7 +26,7 @@ export default function Page() {
   }
 
   return (
-    <FlowScreen title="Verification" subtitle="Identity verification is required before customers can book you" backHref="/provider-dashboard">
+    <FlowScreen title="Verification" subtitle="Identity verification is required before customers can book you" backHref="/provider-dashboard" width="form">
       <AsyncView state={state} empty="Provider profile not found." isEmpty={(d) => !d}>
         {(p) => {
           const veriff = (p.metadata as { veriff?: { status?: string } } | undefined)?.veriff;

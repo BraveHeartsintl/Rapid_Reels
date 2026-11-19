@@ -10,9 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import {
+  GoogleAuthProvider,
   onAuthStateChanged,
   RecaptchaVerifier,
   signInWithPhoneNumber,
+  signInWithPopup,
   signOut as fbSignOut,
   type ConfirmationResult,
   type User,
@@ -32,6 +34,7 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   sendOtp: (phoneE164: string) => Promise<void>;
   confirmOtp: (code: string) => Promise<{ user: User; profile: WithId<UserDoc> | null }>;
+  signInWithGoogle: () => Promise<{ user: User; profile: WithId<UserDoc> | null }>;
   hasPendingOtp: () => boolean;
 }
 
@@ -128,6 +131,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loadProfile],
   );
 
+  const signInWithGoogle = useCallback(async () => {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    const cred = await signInWithPopup(getAuthInstance(), provider);
+    const p = await loadProfile(cred.user.uid);
+    if (p) {
+      void updateUserProfile(cred.user.uid, { lastLoginAt: new Date() }).catch(() => undefined);
+    }
+    return { user: cred.user, profile: p };
+  }, [loadProfile]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -139,9 +153,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       sendOtp,
       confirmOtp,
+      signInWithGoogle,
       hasPendingOtp: () => confirmation !== null,
     }),
-    [user, profile, loading, refreshProfile, signOut, sendOtp, confirmOtp],
+    [user, profile, loading, refreshProfile, signOut, sendOtp, confirmOtp, signInWithGoogle],
   );
 
   return (

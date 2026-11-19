@@ -17,7 +17,7 @@ export function ProviderBookingList() {
 
   return (
     <div>
-      <div className="mb-4 flex gap-2 overflow-x-auto">
+      <div className="mb-6 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <button
             key={f}
@@ -38,7 +38,7 @@ export function ProviderBookingList() {
           return filtered.length === 0 ? (
             <p className="text-sm text-[var(--rr-text-tertiary)]">No bookings in this category.</p>
           ) : (
-            <div>
+            <div className="grid gap-4 md:grid-cols-2">
               {filtered.map((b) => (
                 <BookingCard key={b.id} booking={b} href={`/provider-booking-status?id=${b.id}`} />
               ))}

@@ -1,5 +1,22 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import {
+  customerGroups,
+  customerMobile,
+  DashboardShell,
+  providerGroups,
+  providerMobile,
+} from "@/components/layout/DashboardShell";
+
+const providerRoots = ["/provider-", "/live-event-mode", "/upload-footage", "/reel-editor"];
+
+function isProviderApp(pathname: string) {
+  if (pathname.startsWith("/provider/login") || pathname.startsWith("/provider/registration")) return false;
+  return providerRoots.some((root) => pathname.startsWith(root));
+}
 
 export function FlowScreen({
   title,
@@ -8,6 +25,7 @@ export function FlowScreen({
   backHref,
   nextHref,
   nextLabel = "Continue",
+  width = "wide",
 }: {
   title: string;
   subtitle?: string;
@@ -15,29 +33,41 @@ export function FlowScreen({
   backHref?: string;
   nextHref?: string;
   nextLabel?: string;
+  width?: "wide" | "form";
 }) {
+  const pathname = usePathname();
+  const provider = isProviderApp(pathname);
+
   return (
-    <div className="mx-auto flex min-h-screen max-w-lg flex-col bg-[var(--rr-bg)] px-4 py-6">
-      {backHref ? (
-        <Link href={backHref} className="mb-4 text-sm text-[var(--rr-text-tertiary)] hover:text-white">
-          ← Back
-        </Link>
-      ) : (
-        <div className="mb-4 h-5" />
-      )}
-      <h1 className="text-2xl font-semibold text-white">{title}</h1>
-      {subtitle ? (
-        <p className="mt-2 text-sm text-[var(--rr-text-secondary)]">{subtitle}</p>
-      ) : null}
-      <div className="mt-6 flex-1">{children}</div>
-      {nextHref ? (
-        <div className="sticky bottom-0 mt-8 bg-gradient-to-t from-[var(--rr-bg)] via-[var(--rr-bg)] to-transparent pt-4 pb-2">
-          <Button href={nextHref} className="w-full">
-            {nextLabel}
-          </Button>
-        </div>
-      ) : null}
-    </div>
+    <DashboardShell
+      brand={provider ? "Provider" : "Customer"}
+      groups={provider ? providerGroups : customerGroups}
+      mobileTabs={provider ? providerMobile : customerMobile}
+      backHref={backHref}
+      action={
+        provider ? undefined : (
+          <Link
+            href="/event-type-selection"
+            className="block rounded-full bg-[var(--color-primary)] px-3 py-2.5 text-center text-sm font-semibold text-white"
+          >
+            Book event
+          </Link>
+        )
+      }
+    >
+      <div className={width === "form" ? "max-w-3xl" : undefined}>
+        <h1 className="text-3xl font-bold tracking-tight text-white">{title}</h1>
+        {subtitle ? <p className="mt-2 max-w-2xl text-base text-[var(--rr-text-secondary)]">{subtitle}</p> : null}
+        <div className="mt-8">{children}</div>
+        {nextHref ? (
+          <div className="mt-8 max-w-xs">
+            <Button href={nextHref} className="w-full">
+              {nextLabel}
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </DashboardShell>
   );
 }
 
@@ -51,12 +81,10 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex items-start justify-between gap-4">
+    <div className="mb-8 flex items-end justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-semibold text-white">{title}</h1>
-        {subtitle ? (
-          <p className="mt-1 text-sm text-[var(--rr-text-secondary)]">{subtitle}</p>
-        ) : null}
+        <h1 className="text-3xl font-bold tracking-tight text-white">{title}</h1>
+        {subtitle ? <p className="mt-2 text-base text-[var(--rr-text-secondary)]">{subtitle}</p> : null}
       </div>
       {action}
     </div>

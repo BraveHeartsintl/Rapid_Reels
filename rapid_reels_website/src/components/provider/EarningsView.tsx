@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge, Card } from "@/components/ui/Card";
+import { DataTable, TD, TH, THead, TR } from "@/components/ui/DataTable";
 import { AsyncView } from "@/components/ui/State";
 import { useUid } from "@/lib/auth/useUid";
 import { listProviderPayments } from "@/lib/data/queries";
@@ -39,10 +40,10 @@ export function EarningsView() {
 
         return (
           <div className="space-y-5">
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <Card className="p-3"><p className="text-lg font-semibold text-white">{fmtMoney(total, currency)}</p><p className="text-[10px] text-[var(--rr-text-tertiary)]">Total received</p></Card>
-              <Card className="p-3"><p className="text-lg font-semibold text-white">{fmtMoney(thisMonth, currency)}</p><p className="text-[10px] text-[var(--rr-text-tertiary)]">This month</p></Card>
-              <Card className="p-3"><p className="text-lg font-semibold text-white">{fmtMoney(pending, currency)}</p><p className="text-[10px] text-[var(--rr-text-tertiary)]">Pending</p></Card>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Card><p className="text-3xl font-bold text-white">{fmtMoney(total, currency)}</p><p className="mt-1 text-sm text-[var(--rr-text-tertiary)]">Total received</p></Card>
+              <Card><p className="text-3xl font-bold text-white">{fmtMoney(thisMonth, currency)}</p><p className="mt-1 text-sm text-[var(--rr-text-tertiary)]">This month</p></Card>
+              <Card><p className="text-3xl font-bold text-white">{fmtMoney(pending, currency)}</p><p className="mt-1 text-sm text-[var(--rr-text-tertiary)]">Pending</p></Card>
             </div>
             {byMonth.size > 0 ? (
               <section>
@@ -59,17 +60,24 @@ export function EarningsView() {
             ) : null}
             <section>
               <h2 className="mb-2 text-sm font-semibold text-[var(--rr-text-secondary)]">Transactions</h2>
-              <div className="space-y-2">
-                {rows.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between rounded-2xl bg-[var(--rr-card)] px-4 py-3 text-sm">
-                    <div>
-                      <p className="text-white">{fmtMoney(r.amount, r.currency)}</p>
-                      <p className="text-xs text-[var(--rr-text-tertiary)]">{fmtDate(toDate(r.createdAt))}</p>
-                    </div>
-                    <Badge tone={r.status === "completed" || r.status === "succeeded" ? "success" : "muted"}>{titleCase(r.status)}</Badge>
-                  </div>
-                ))}
-              </div>
+              <DataTable>
+                <THead>
+                  <TH>Amount</TH>
+                  <TH>Date</TH>
+                  <TH>Status</TH>
+                </THead>
+                <tbody>
+                  {rows.map((r) => (
+                    <TR key={r.id}>
+                      <TD className="font-medium text-white">{fmtMoney(r.amount, r.currency)}</TD>
+                      <TD>{fmtDate(toDate(r.createdAt))}</TD>
+                      <TD>
+                        <Badge tone={r.status === "completed" || r.status === "succeeded" ? "success" : "muted"}>{titleCase(r.status)}</Badge>
+                      </TD>
+                    </TR>
+                  ))}
+                </tbody>
+              </DataTable>
             </section>
           </div>
         );

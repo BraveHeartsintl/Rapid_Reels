@@ -2,6 +2,7 @@
 
 import { PageHeader } from "@/components/layout/FlowScreen";
 import { Card } from "@/components/ui/Card";
+import { DataTable, TD, TH, THead, TR } from "@/components/ui/DataTable";
 import { AsyncView } from "@/components/ui/State";
 import { listAllPayments, listAllProviders } from "@/lib/data/queries";
 import { fmtMoney } from "@/lib/format";
@@ -40,20 +41,26 @@ export default function Page() {
                 <Card><p className="text-xs text-[var(--rr-text-tertiary)]">Platform commission</p><p className="text-2xl font-bold text-white">{fmtMoney(totalCommission)}</p></Card>
                 <Card><p className="text-xs text-[var(--rr-text-tertiary)]">Provider payouts</p><p className="text-2xl font-bold text-white">{fmtMoney(totalGross - totalCommission)}</p></Card>
               </div>
-              <div className="space-y-2">
-                {rows.map((r) => (
-                  <Card key={r.p.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-                    <div>
-                      <p className="font-medium text-white">{r.p.businessName || r.p.id}</p>
-                      <p className="text-xs text-[var(--rr-text-tertiary)]">{r.count} payments · commission {r.rate}%</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white">{fmtMoney(r.payout)}</p>
-                      <p className="text-xs text-[var(--rr-text-tertiary)]">of {fmtMoney(r.total)} gross</p>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+              <DataTable>
+                <THead>
+                  <TH>Provider</TH>
+                  <TH>Payments</TH>
+                  <TH>Rate</TH>
+                  <TH>Gross</TH>
+                  <TH>Payout</TH>
+                </THead>
+                <tbody>
+                  {rows.map((r) => (
+                    <TR key={r.p.id}>
+                      <TD className="font-medium text-white">{r.p.businessName || r.p.id}</TD>
+                      <TD>{r.count}</TD>
+                      <TD>{r.rate}%</TD>
+                      <TD>{fmtMoney(r.total)}</TD>
+                      <TD className="font-medium text-white">{fmtMoney(r.payout)}</TD>
+                    </TR>
+                  ))}
+                </tbody>
+              </DataTable>
             </div>
           );
         }}

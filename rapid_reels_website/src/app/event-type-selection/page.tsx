@@ -12,7 +12,7 @@ export default function Page() {
 
   return (
     <FlowScreen title="Select event type" subtitle="What are you celebrating?" backHref="/home">
-      <div className="grid gap-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {EVENT_TYPES.map((e) => (
           <button
             key={e.id}

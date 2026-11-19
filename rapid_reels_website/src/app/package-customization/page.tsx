@@ -55,7 +55,7 @@ export default function Page() {
   const styleOptions = STYLES.includes(current.editingStyle) ? STYLES : [current.editingStyle, ...STYLES];
 
   return (
-    <FlowScreen title="Customize" subtitle="Add-ons for your booking" backHref="/provider-package-pick">
+    <FlowScreen title="Customize" subtitle="Add-ons for your booking" backHref="/provider-package-pick" width="form">
       {!draft.package ? (
         <Empty>
           Choose a package first. <a href="/provider-package-pick" className="underline">Pick package</a>

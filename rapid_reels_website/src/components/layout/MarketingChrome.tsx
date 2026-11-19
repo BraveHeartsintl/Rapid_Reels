@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
+import { MobileMenu } from "@/components/layout/MobileMenu";
+import { NavAuthActions } from "@/components/layout/NavAuthActions";
 
 const links = [
   { href: "/how-it-works", label: "How it works" },
@@ -13,7 +14,7 @@ const links = [
 export function MarketingNav() {
   return (
     <header className="absolute inset-x-0 top-0 z-40 px-3 pt-4 sm:px-6">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 rounded-full border border-white/10 bg-white/5 px-4 py-2 shadow-lg shadow-black/20 backdrop-blur-xl sm:px-5">
+      <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-4 rounded-full border border-white/10 bg-white/5 px-4 py-2 shadow-lg shadow-black/20 backdrop-blur-xl sm:px-5">
         <Link href="/" className="flex items-center gap-3">
           <Image
             src="/logo.png"
@@ -36,12 +37,8 @@ export function MarketingNav() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <Button href="/login" variant="ghost" className="hidden sm:inline-flex px-4 py-2">
-            Sign in
-          </Button>
-          <Button href="/role-selection" className="px-4 py-2 text-xs sm:text-sm">
-            Get started
-          </Button>
+          <NavAuthActions />
+          <MobileMenu links={links} />
         </div>
       </div>
     </header>
@@ -77,6 +74,16 @@ export function MarketingFooter() {
             <li>
               <Link href="/packages" className="hover:text-white">
                 Packages
+              </Link>
+            </li>
+            <li>
+              <Link href="/for-customers" className="hover:text-white">
+                For customers
+              </Link>
+            </li>
+            <li>
+              <Link href="/for-providers" className="hover:text-white">
+                For providers
               </Link>
             </li>
             <li>

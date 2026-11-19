@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -6,6 +7,12 @@ export const metadata = { title: "Choose role" };
 export default function RoleSelectionPage() {
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col px-4 py-10">
+      <Link
+        href="/"
+        className="mb-4 inline-flex w-fit items-center text-sm text-[var(--rr-text-tertiary)] hover:text-white"
+      >
+        ← Back
+      </Link>
       <h1 className="text-3xl font-semibold text-white">Who are you?</h1>
       <p className="mt-2 text-sm text-[var(--rr-text-secondary)]">
         Choose how you want to use Rapid Reels.

@@ -127,7 +127,7 @@ export default function Page() {
   );
 
   return (
-    <FlowScreen title={id ? "Edit catalogue event" : "New catalogue event"} backHref="/provider-catalogue">
+    <FlowScreen title={id ? "Edit catalogue event" : "New catalogue event"} backHref="/provider-catalogue" width="form">
       <AsyncView state={state} isEmpty={() => false}>
         {(data) => <EditForm uid={uid!} id={id} data={data} />}
       </AsyncView>
