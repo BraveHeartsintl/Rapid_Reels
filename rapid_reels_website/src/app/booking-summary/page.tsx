@@ -12,10 +12,8 @@ import { draftFingerprint, draftTotal } from "@/lib/booking/pricing";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { createBooking, getBooking, listPublicOffers, updateBooking } from "@/lib/data/queries";
 import type { OfferDoc, WithId } from "@/lib/data/types";
-import { dateKeyLocal, errorMessage, fmtMoney, titleCase } from "@/lib/format";
+import { dateKeyLocal, errorMessage, fmtMoney, MIN_PAYABLE, titleCase, type PayCurrency } from "@/lib/format";
 import { toDate } from "@/lib/data/types";
-
-const MIN_PAYABLE = 0.3;
 
 function discountFor(offer: OfferDoc, total: number): number {
   const d = offer.discount ?? {};
@@ -64,7 +62,7 @@ function buildPayload(d: BookingDraft, customerId: string, total: number, offer:
       totalAmount: total,
       advanceAmount: total,
       remainingAmount: 0,
-      currency: "gbp",
+      currency: d.currency ?? "gbp",
       paymentStatus: "pending",
       transactions: null,
     },
@@ -98,6 +96,7 @@ export default function Page() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const currency: PayCurrency = draft.currency === "inr" ? "inr" : "gbp";
   const subtotal = draftTotal(draft);
   const discount = offer ? discountFor(offer, subtotal) : 0;
   const total = Math.max(0, subtotal - discount);
@@ -130,7 +129,10 @@ export default function Page() {
   async function confirm() {
     if (!user || !complete) return;
     setError(null);
-    if (total < MIN_PAYABLE) return setError("Payment amount is too low. The minimum is £0.30.");
+    const minPayable = MIN_PAYABLE[currency];
+    if (total < minPayable) {
+      return setError(`Payment amount is too low. The minimum is ${fmtMoney(minPayable, currency)}.`);
+    }
     setBusy(true);
     try {
       const fingerprint = draftFingerprint(draft) + JSON.stringify([offer?.id, total]);
@@ -181,14 +183,14 @@ export default function Page() {
             </Card>
           ))}
           <Card className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-[var(--rr-text-tertiary)]">Package</span><span className="text-white">{fmtMoney(draft.package?.price)}</span></div>
+            <div className="flex justify-between"><span className="text-[var(--rr-text-tertiary)]">Package</span><span className="text-white">{fmtMoney(draft.package?.price, currency)}</span></div>
             {draft.customizations && draftTotal(draft) - (draft.package?.price ?? 0) > 0 ? (
-              <div className="flex justify-between"><span className="text-[var(--rr-text-tertiary)]">Add-ons</span><span className="text-white">{fmtMoney(draftTotal(draft) - (draft.package?.price ?? 0))}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--rr-text-tertiary)]">Add-ons</span><span className="text-white">{fmtMoney(draftTotal(draft) - (draft.package?.price ?? 0), currency)}</span></div>
             ) : null}
             {discount > 0 ? (
-              <div className="flex justify-between"><span className="text-[var(--rr-text-tertiary)]">Discount ({offer?.code})</span><span className="text-[var(--rr-success)]">−{fmtMoney(discount)}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--rr-text-tertiary)]">Discount ({offer?.code})</span><span className="text-[var(--rr-success)]">−{fmtMoney(discount, currency)}</span></div>
             ) : null}
-            <div className="flex justify-between border-t border-white/10 pt-2 text-base"><span className="text-white">Total</span><span className="font-semibold text-white">{fmtMoney(total)}</span></div>
+            <div className="flex justify-between border-t border-white/10 pt-2 text-base"><span className="text-white">Total</span><span className="font-semibold text-white">{fmtMoney(total, currency)}</span></div>
           </Card>
 
           <div className="flex items-end gap-2">
@@ -204,7 +206,7 @@ export default function Page() {
           </div>
           {error ? <Notice>{error}</Notice> : null}
           <Button type="button" className="w-full" disabled={busy || !terms || !refund || !rights} onClick={confirm}>
-            {busy ? "Securing your date…" : `Confirm and pay ${fmtMoney(total)}`}
+            {busy ? "Securing your date…" : `Confirm and pay ${fmtMoney(total, currency)}`}
           </Button>
         </div>
       )}

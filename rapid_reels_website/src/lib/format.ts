@@ -2,10 +2,52 @@ import { toDate } from "@/lib/data/types";
 
 const SYMBOLS: Record<string, string> = { gbp: "£", inr: "₹", usd: "$", eur: "€" };
 
+/** Currencies the checkout can charge in. Keep in sync with `createStripePaymentIntent` in the Cloud Functions. */
+export type PayCurrency = "gbp" | "inr";
+
+/** Smallest amount Stripe accepts per currency, in major units (£0.30, ₹0.50). */
+export const MIN_PAYABLE: Record<PayCurrency, number> = { gbp: 0.3, inr: 0.5 };
+
+const INDIAN_CITIES = new Set([
+  "hyderabad",
+  "secunderabad",
+  "mumbai",
+  "delhi",
+  "new delhi",
+  "bengaluru",
+  "bangalore",
+  "chennai",
+  "kolkata",
+  "pune",
+  "ahmedabad",
+  "jaipur",
+  "vijayawada",
+  "visakhapatnam",
+]);
+
+/** Indian cities are charged in INR; everywhere else (UK) in GBP. */
+export function currencyForCity(city: string | undefined | null): PayCurrency {
+  return INDIAN_CITIES.has((city ?? "").trim().toLowerCase()) ? "inr" : "gbp";
+}
+
 export function fmtMoney(amount: number | undefined | null, currency = "gbp"): string {
   const n = Number(amount ?? 0);
-  const symbol = SYMBOLS[currency.toLowerCase()] ?? `${currency.toUpperCase()} `;
-  return `${symbol}${n.toLocaleString("en-GB", { maximumFractionDigits: 2 })}`;
+  const code = currency.toLowerCase();
+  const symbol = SYMBOLS[code] ?? `${currency.toUpperCase()} `;
+  // Indian digit grouping (1,00,000) for rupees, western grouping otherwise.
+  const locale = code === "inr" ? "en-IN" : "en-GB";
+  return `${symbol}${n.toLocaleString(locale, { maximumFractionDigits: 2 })}`;
+}
+
+/** Package `duration`, `deliveryTime` and provider `averageDeliveryTime` are all stored in minutes. */
+export function fmtMinutes(minutes: number | undefined | null): string {
+  const m = Math.round(Number(minutes ?? 0));
+  if (m <= 0) return "";
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  if (h >= 48 && rem === 0 && h % 24 === 0) return `${h / 24} days`;
+  return rem === 0 ? `${h} hr` : `${h} hr ${rem} min`;
 }
 
 export function fmtDate(v: unknown): string {

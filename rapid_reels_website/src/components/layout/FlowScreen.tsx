@@ -13,8 +13,22 @@ import {
 
 const providerRoots = ["/provider-", "/live-event-mode", "/upload-footage", "/reel-editor"];
 
+/** `/provider-*` pages that belong to the customer booking flow, not the provider app. */
+const customerBookingRoots = [
+  "/provider-selection",
+  "/provider-details",
+  "/provider-portfolio",
+  "/provider-package-pick",
+];
+
+function matchesRoot(pathname: string, root: string) {
+  return pathname === root || pathname.startsWith(`${root}/`);
+}
+
 function isProviderApp(pathname: string) {
   if (pathname.startsWith("/provider/login") || pathname.startsWith("/provider/registration")) return false;
+  // Order matters: `/provider-portfolio` is customer-facing, `/provider-portfolio-upload` is not.
+  if (customerBookingRoots.some((root) => matchesRoot(pathname, root))) return false;
   return providerRoots.some((root) => pathname.startsWith(root));
 }
 

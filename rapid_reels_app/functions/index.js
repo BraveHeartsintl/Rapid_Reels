@@ -1462,20 +1462,26 @@ exports.createStripePaymentIntent = onCall(
         const payment = booking.payment || {};
         const advanceAmount = Number(payment.advanceAmount || 0);
         const currency = String(payment.currency || "gbp").toLowerCase();
-        if (currency !== "gbp") {
+        // Smallest charge Stripe accepts, in minor units (pence / paise).
+        const minimumByCurrency = {
+          gbp: {minor: 30, label: "£0.30"},
+          inr: {minor: 50, label: "₹0.50"},
+        };
+        const minimum = minimumByCurrency[currency];
+        if (!minimum) {
           throw new HttpsError(
               "failed-precondition",
-              "Only GBP payments are supported",
+              "Only GBP and INR payments are supported",
           );
         }
         const amountInSmallestUnit = Math.round(advanceAmount * 100);
         if (!Number.isFinite(amountInSmallestUnit) || amountInSmallestUnit <= 0) {
           throw new HttpsError("failed-precondition", "Invalid booking amount");
         }
-        if (currency === "gbp" && amountInSmallestUnit < 30) {
+        if (amountInSmallestUnit < minimum.minor) {
           throw new HttpsError(
               "failed-precondition",
-              "GBP amount must be at least £0.30",
+              `${currency.toUpperCase()} amount must be at least ${minimum.label}`,
           );
         }
         const idempotencyKey = `booking_${String(bookingId)}_${currency}_advance_${amountInSmallestUnit}`;

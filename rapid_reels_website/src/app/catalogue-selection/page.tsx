@@ -6,7 +6,7 @@ import { FlowScreen } from "@/components/layout/FlowScreen";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { AsyncView, Empty } from "@/components/ui/State";
-import { saveDraft } from "@/lib/booking/draft";
+import { saveDraft, useBookingDraft } from "@/lib/booking/draft";
 import { useProviderId } from "@/lib/booking/useProviderId";
 import { listCatalogue } from "@/lib/data/queries";
 import { fmtMoney } from "@/lib/format";
@@ -14,6 +14,7 @@ import { useAsync } from "@/lib/hooks";
 
 export default function Page() {
   const router = useRouter();
+  const draft = useBookingDraft();
   const { ready, providerId } = useProviderId();
   const state = useAsync(() => listCatalogue(providerId!), [providerId], ready && Boolean(providerId));
   const packHref = `/provider-package-pick${providerId ? `?id=${providerId}` : ""}`;
@@ -59,7 +60,7 @@ export default function Page() {
                           ) : null}
                         </div>
                         {i.startingPrice ? (
-                          <span className="shrink-0 text-[var(--rr-secondary)]">from {fmtMoney(i.startingPrice)}</span>
+                          <span className="shrink-0 text-[var(--rr-secondary)]">from {fmtMoney(i.startingPrice, draft.currency)}</span>
                         ) : null}
                       </div>
                     </Card>

@@ -22,21 +22,20 @@ export default function HomePage() {
         <div className="relative mx-auto grid w-full max-w-6xl animate-fade-up items-center gap-10 md:grid-cols-2">
           <div>
             <h1 className="mb-6 max-w-xl text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Capture Every Moment,{" "}
-              <span className="text-gradient">Share It Instantly</span>
+              Your Moments. Your Style.{" "}
+              <span className="text-gradient">Instantly Delivered.</span>
             </h1>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-[var(--rr-accent)] backdrop-blur">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--rr-accent)]" />
-              Book verified event creators
-            </span>
             <p className="mt-4 max-w-xl text-lg text-[var(--rr-text-secondary)] sm:text-xl">
-              <span className="text-gradient font-semibold">Event reels in minutes</span> — book verified creators and
-              share while the moment is still live.
+              Transform your special moments into stunning, professionally edited reels. Connect with talented content
+              creators, choose your style and get social-ready videos effortlessly.
+            </p>
+            <p className="mt-4 max-w-xl text-lg text-[var(--rr-text-secondary)] sm:text-xl">
+              Whether it&apos;s a celebration, business promotion or everyday moment, we bring your story to life.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button href="/role-selection">Get started</Button>
-              <Button href="/how-it-works" variant="outline">
-                See how it works
+              <Button href="/role-selection">Book a Creator</Button>
+              <Button href="/for-providers" variant="outline">
+                Become a Creator
               </Button>
             </div>
           </div>

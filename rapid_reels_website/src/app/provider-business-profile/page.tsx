@@ -11,17 +11,17 @@ import { useProviderDoc } from "@/lib/auth/useProviderDoc";
 import { updateProvider } from "@/lib/data/queries";
 import { safeFileName, uploadFile } from "@/lib/data/storage";
 import type { PackageOffering, ProviderDoc } from "@/lib/data/types";
-import { errorMessage, EVENT_TYPES } from "@/lib/format";
+import { currencyForCity, errorMessage, EVENT_TYPES } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const NEW_PACKAGE = (): PackageOffering => ({
   packageId: `pkg_${Date.now().toString(36)}`,
   name: "",
   price: 0,
-  duration: 4,
+  duration: 240, // minutes
   reelsCount: 1,
   editingStyle: "standard",
-  deliveryTime: 3,
+  deliveryTime: 60, // minutes
   highlightVideo: false,
   liveReelStation: false,
   features: [],
@@ -116,10 +116,10 @@ function ProfileForm({ uid, provider }: { uid: string; provider: ProviderDoc }) 
           <Card key={p.packageId} className="space-y-3">
             <Input label="Package name" value={p.name} onChange={(e) => patchPackage(i, { name: e.target.value })} />
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Price (£)" type="number" min={0} value={p.price} onChange={(e) => patchPackage(i, { price: Number(e.target.value) })} />
+              <Input label={`Price (${currencyForCity(provider.location?.city) === "inr" ? "₹" : "£"})`} type="number" min={0} value={p.price} onChange={(e) => patchPackage(i, { price: Number(e.target.value) })} />
               <Input label="Reels" type="number" min={1} value={p.reelsCount} onChange={(e) => patchPackage(i, { reelsCount: Number(e.target.value) })} />
-              <Input label="Coverage (hours)" type="number" min={1} value={p.duration} onChange={(e) => patchPackage(i, { duration: Number(e.target.value) })} />
-              <Input label="Delivery (days)" type="number" min={1} value={p.deliveryTime} onChange={(e) => patchPackage(i, { deliveryTime: Number(e.target.value) })} />
+              <Input label="Coverage (minutes)" type="number" min={1} value={p.duration} onChange={(e) => patchPackage(i, { duration: Number(e.target.value) })} />
+              <Input label="Delivery (minutes)" type="number" min={1} value={p.deliveryTime} onChange={(e) => patchPackage(i, { deliveryTime: Number(e.target.value) })} />
             </div>
             <Input label="Editing style" value={p.editingStyle} onChange={(e) => patchPackage(i, { editingStyle: e.target.value })} />
             <Input label="Features (comma separated)" value={p.features.join(", ")} onChange={(e) => patchPackage(i, { features: e.target.value.split(",").map((s) => s.trim()) })} />

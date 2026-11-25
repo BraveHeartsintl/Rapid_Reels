@@ -1,16 +1,29 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FlowScreen } from "@/components/layout/FlowScreen";
-import { providerName, providerStartingPrice } from "@/components/provider/ProviderCard";
+import { providerCurrency, providerName, providerStartingPrice } from "@/components/provider/ProviderCard";
 import { Button } from "@/components/ui/Button";
 import { Badge, Card } from "@/components/ui/Card";
 import { AsyncView, Empty } from "@/components/ui/State";
 import { saveDraft } from "@/lib/booking/draft";
 import { useProviderId } from "@/lib/booking/useProviderId";
 import { getProvider, listProviderReviews } from "@/lib/data/queries";
-import { EVENT_TYPES, fmtDate, fmtMoney } from "@/lib/format";
+import { EVENT_TYPES, fmtDate, fmtMinutes, fmtMoney } from "@/lib/format";
 import { useAsync } from "@/lib/hooks";
+
+/** Cover photo that falls back to the brand gradient when missing or when the image fails to load. */
+function CoverImage({ src }: { src?: string }) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (!src || failedSrc === src) {
+    return <div className="h-full w-full bg-gradient-to-br from-[var(--rr-primary)]/70 via-[#7a1fa2]/50 to-[var(--rr-surface)]" />;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" className="h-full w-full object-cover" onError={() => setFailedSrc(src)} />
+  );
+}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="mb-4 text-lg font-semibold text-white">{children}</h2>;
@@ -63,16 +76,17 @@ export default function Page() {
             const name = providerName(p);
             const rating = p.rating ?? 0;
             const startingPrice = providerStartingPrice(p);
+            const currency = providerCurrency(p);
             const cover = p.coverImages?.[0];
             const stats = [
               p.totalEventsCompleted ? { value: String(p.totalEventsCompleted), label: "Events done" } : null,
               p.totalReelsDelivered ? { value: String(p.totalReelsDelivered), label: "Reels delivered" } : null,
-              p.averageDeliveryTime ? { value: `${p.averageDeliveryTime}h`, label: "Avg. delivery" } : null,
+              p.averageDeliveryTime ? { value: fmtMinutes(p.averageDeliveryTime), label: "Avg. delivery" } : null,
               p.teamSize ? { value: String(p.teamSize), label: "Team size" } : null,
             ].filter((s): s is { value: string; label: string } => s !== null);
 
             const book = () => {
-              saveDraft({ providerId: p.id, providerName: name });
+              saveDraft({ providerId: p.id, providerName: name, currency });
               router.push(`/catalogue-selection?id=${p.id}`);
             };
 
@@ -81,12 +95,7 @@ export default function Page() {
                 {/* Hero */}
                 <div className="overflow-hidden rounded-3xl border border-[var(--rr-outline)]/60 bg-[var(--rr-card)] shadow-[var(--shadow-card)] lg:col-start-1">
                   <div className="relative h-36 sm:h-48">
-                    {cover ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={cover} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="h-full w-full bg-gradient-to-br from-[var(--rr-primary)]/70 via-[#7a1fa2]/50 to-[var(--rr-surface)]" />
-                    )}
+                    <CoverImage src={cover} />
                     <div className="absolute inset-0 bg-gradient-to-t from-[var(--rr-card)] via-transparent to-transparent" />
                   </div>
                   <div className="px-5 pb-6 sm:px-8">
@@ -158,7 +167,7 @@ export default function Page() {
                         {startingPrice !== null ? "Starting from" : "Pricing"}
                       </p>
                       <p className="mt-1 text-3xl font-bold text-white">
-                        {startingPrice !== null ? fmtMoney(startingPrice) : "On request"}
+                        {startingPrice !== null ? fmtMoney(startingPrice, currency) : "On request"}
                       </p>
                     </div>
                     <ul className="space-y-2 text-sm text-[var(--rr-text-secondary)]">
@@ -200,12 +209,12 @@ export default function Page() {
                           className="flex flex-col rounded-2xl border border-[var(--rr-outline)]/60 bg-white/[0.03] p-5 transition hover:border-[var(--rr-primary)]/60"
                         >
                           <p className="font-semibold text-white">{pk.name}</p>
-                          <p className="mt-1 text-2xl font-bold text-[var(--rr-secondary)]">{fmtMoney(pk.price)}</p>
+                          <p className="mt-1 text-2xl font-bold text-[var(--rr-secondary)]">{fmtMoney(pk.price, currency)}</p>
                           <p className="mt-3 text-xs text-[var(--rr-text-tertiary)]">
                             {[
-                              pk.duration ? `${pk.duration}h coverage` : null,
+                              pk.duration ? `${fmtMinutes(pk.duration)} coverage` : null,
                               pk.reelsCount ? `${pk.reelsCount} reel${pk.reelsCount > 1 ? "s" : ""}` : null,
-                              pk.deliveryTime ? `${pk.deliveryTime}h delivery` : null,
+                              pk.deliveryTime ? `${fmtMinutes(pk.deliveryTime)} delivery` : null,
                             ]
                               .filter(Boolean)
                               .join(" · ")}

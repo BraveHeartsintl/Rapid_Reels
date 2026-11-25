@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Empty } from "@/components/ui/State";
 import { saveDraft, useBookingDraft } from "@/lib/booking/draft";
-import { ADDITIONAL_REEL_PRICE, DRONE_PRICE, addOnCost } from "@/lib/booking/pricing";
+import { additionalReelPrice, addOnCost, dronePrice } from "@/lib/booking/pricing";
 import { fmtMoney } from "@/lib/format";
 
 const STYLES = ["Cinematic", "Trendy", "Classic", "Minimal"];
@@ -51,7 +51,8 @@ export default function Page() {
     includeDrone: touched.includeDrone ?? draft.customizations?.includeDrone ?? false,
     additionalReels: touched.additionalReels ?? draft.customizations?.additionalReels ?? 0,
   };
-  const extra = addOnCost(current);
+  const currency = draft.currency ?? "gbp";
+  const extra = addOnCost(current, currency);
   const styleOptions = STYLES.includes(current.editingStyle) ? STYLES : [current.editingStyle, ...STYLES];
 
   return (
@@ -64,7 +65,7 @@ export default function Page() {
         <div className="space-y-4">
           <Card className="flex justify-between text-sm">
             <span className="text-[var(--rr-text-secondary)]">{draft.package.name}</span>
-            <span className="text-white">{fmtMoney(draft.package.price)}</span>
+            <span className="text-white">{fmtMoney(draft.package.price, currency)}</span>
           </Card>
           <Select label="Editing style" value={current.editingStyle} options={styleOptions} onChange={(v) => setTouched((t) => ({ ...t, editingStyle: v }))} />
           <Select label="Music" value={current.musicPreference} options={MUSIC} onChange={(v) => setTouched((t) => ({ ...t, musicPreference: v }))} />
@@ -76,10 +77,10 @@ export default function Page() {
               checked={current.includeDrone}
               onChange={(e) => setTouched((t) => ({ ...t, includeDrone: e.target.checked }))}
             />
-            Drone coverage (+{fmtMoney(DRONE_PRICE)})
+            Drone coverage (+{fmtMoney(dronePrice(currency), currency)})
           </label>
           <div className="flex items-center justify-between rounded-2xl border border-[var(--rr-outline)]/50 bg-[var(--rr-card)] p-4 text-sm text-white">
-            <span>Extra reels (+{fmtMoney(ADDITIONAL_REEL_PRICE)} each)</span>
+            <span>Extra reels (+{fmtMoney(additionalReelPrice(currency), currency)} each)</span>
             <span className="flex items-center gap-3">
               <button type="button" aria-label="Fewer reels" className="h-8 w-8 rounded-full bg-white/10" onClick={() => setTouched((t) => ({ ...t, additionalReels: Math.max(0, current.additionalReels - 1) }))}>−</button>
               <span>{current.additionalReels}</span>
@@ -88,7 +89,7 @@ export default function Page() {
           </div>
           <Card className="flex justify-between text-sm">
             <span className="text-[var(--rr-text-secondary)]">Total</span>
-            <span className="font-semibold text-white">{fmtMoney(draft.package.price + extra)}</span>
+            <span className="font-semibold text-white">{fmtMoney(draft.package.price + extra, currency)}</span>
           </Card>
           <Button
             type="button"

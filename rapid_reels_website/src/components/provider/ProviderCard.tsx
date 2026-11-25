@@ -1,8 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { Badge } from "@/components/ui/Card";
-import { fmtMoney } from "@/lib/format";
+import { currencyForCity, fmtMoney, type PayCurrency } from "@/lib/format";
 import type { ProviderDoc, WithId } from "@/lib/data/types";
+
+/** Providers are paid in the currency of the city they work in (INR for India, GBP for the UK). */
+export function providerCurrency(p: ProviderDoc): PayCurrency {
+  return currencyForCity(p.location?.city);
+}
 
 export function providerStartingPrice(p: ProviderDoc): number | null {
   const prices = (p.packages ?? []).map((x) => x.price).filter((n) => typeof n === "number" && n > 0);
@@ -49,7 +54,7 @@ export function ProviderCard({ provider, href }: { provider: WithId<ProviderDoc>
         {price !== null ? (
           <>
             <p className="text-[10px] uppercase tracking-wider text-[var(--rr-text-tertiary)]">From</p>
-            <p className="text-sm font-bold text-[var(--rr-secondary)]">{fmtMoney(price)}</p>
+            <p className="text-sm font-bold text-[var(--rr-secondary)]">{fmtMoney(price, providerCurrency(provider))}</p>
           </>
         ) : null}
         <span className="mt-1 inline-block text-xs text-[var(--rr-text-tertiary)] transition group-hover:translate-x-0.5 group-hover:text-white">

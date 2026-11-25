@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import { FlowScreen } from "@/components/layout/FlowScreen";
 import { AsyncView, Empty } from "@/components/ui/State";
 import { saveDraft, useBookingDraft } from "@/lib/booking/draft";
+import { providerCurrency } from "@/components/provider/ProviderCard";
 import { useProviderId } from "@/lib/booking/useProviderId";
 import { getProvider } from "@/lib/data/queries";
-import { fmtMoney } from "@/lib/format";
+import { fmtMinutes, fmtMoney } from "@/lib/format";
 import { useAsync } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ export default function Page() {
         <AsyncView state={state} empty="This provider could not be found." isEmpty={(d) => d === null}>
           {(data) => {
             if (!data) return null;
+            const currency = providerCurrency(data.provider);
             const all = data.provider.packages ?? [];
             const allowed = draft.cataloguePackageIds?.length
               ? all.filter((p) => draft.cataloguePackageIds!.includes(p.packageId))
@@ -69,17 +71,19 @@ export default function Page() {
                           deliveryTime: p.deliveryTime,
                           features: p.features ?? [],
                         },
-                        currency: "gbp",
+                        currency,
                       });
                       router.push("/package-customization");
                     }}
                   >
                     <div className="flex justify-between">
                       <span className="font-medium text-white">{p.name}</span>
-                      <span className="text-[var(--rr-secondary)]">{fmtMoney(p.price)}</span>
+                      <span className="text-[var(--rr-secondary)]">{fmtMoney(p.price, currency)}</span>
                     </div>
                     <p className="mt-1 text-xs text-[var(--rr-text-tertiary)]">
-                      {p.duration} min · {p.reelsCount} reels · {p.editingStyle}
+                      {[fmtMinutes(p.duration) && `${fmtMinutes(p.duration)} coverage`, `${p.reelsCount} reels`, p.editingStyle]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                     {p.features?.length ? (
                       <ul className="mt-2 space-y-0.5 text-xs text-[var(--rr-text-secondary)]">
