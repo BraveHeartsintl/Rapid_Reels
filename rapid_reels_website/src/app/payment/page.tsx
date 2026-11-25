@@ -110,7 +110,7 @@ export default function Page() {
                   stripe={stripePromise}
                   options={{
                     clientSecret: data.clientSecret,
-                    appearance: { theme: "night", variables: { colorPrimary: "#FE002A" } },
+                    appearance: { theme: "night", variables: { colorPrimary: "#7C3AED" } },
                   }}
                 >
                   <CheckoutForm bookingId={data.booking.id} amountLabel={amount} />

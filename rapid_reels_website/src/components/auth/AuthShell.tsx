@@ -93,7 +93,7 @@ export function AuthShell({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-ink)] via-[var(--color-ink)]/70 to-[var(--color-ink)]/30" />
         <div
-          className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_0%_100%,rgba(254,0,42,0.35),transparent_70%)]"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_0%_100%,rgba(124,58,237,0.35),transparent_70%)]"
           aria-hidden="true"
         />
 
@@ -132,7 +132,7 @@ export function AuthShell({
       {/* Form panel */}
       <main className="relative flex flex-col bg-[var(--color-ink)] px-5 py-6 sm:px-10">
         <div
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_100%_0%,rgba(254,0,42,0.14),transparent_70%)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_100%_0%,rgba(124,58,237,0.14),transparent_70%)]"
           aria-hidden="true"
         />
 

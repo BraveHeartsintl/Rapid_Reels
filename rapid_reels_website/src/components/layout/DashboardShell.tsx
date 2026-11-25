@@ -148,7 +148,7 @@ export function DashboardShell({
             width={180}
             height={100}
             priority
-            className="h-16 w-auto object-contain drop-shadow-[0_0_20px_rgba(254,0,42,0.35)]"
+            className="h-16 w-auto object-contain drop-shadow-[0_0_20px_rgba(124,58,237,0.35)]"
           />
           <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--rr-text-tertiary)]">
             {brand}

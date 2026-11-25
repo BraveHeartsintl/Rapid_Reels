@@ -2,9 +2,9 @@
 
 :root {
   /* ---------- Flashoot design tokens (see design guide, section 10) ---------- */
-  --color-primary: #fe002a;
-  --color-primary-hover: #d90023;
-  --color-primary-soft: #ffe5ea;
+  --color-primary: #7c3aed;
+  --color-primary-hover: #6d28d9;
+  --color-primary-soft: #ede9fe;
   --color-ink: #0b0b0f;
   --color-text: #1f1f26;
   --color-muted: #6b6b76;
@@ -18,7 +18,7 @@
 
   --shadow-card: 0 4px 20px rgba(11, 11, 15, 0.08);
   --shadow-raised: 0 12px 40px rgba(11, 11, 15, 0.16);
-  --shadow-glow: 0 8px 24px rgba(254, 0, 42, 0.35);
+  --shadow-glow: 0 8px 24px rgba(124, 58, 237, 0.35);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -37,16 +37,16 @@
   --rr-bg: var(--color-ink);
   --rr-primary: var(--color-primary);
   --rr-primary-dark: var(--color-primary-hover);
-  --rr-secondary: #ff4d6a;
-  --rr-accent: #ff4d6a;
+  --rr-secondary: #a78bfa;
+  --rr-accent: #a78bfa;
   --rr-surface: #121218;
   --rr-card: #1a1a22;
   --rr-surface-elevated: #23232d;
   --rr-text: #ffffff;
   --rr-text-secondary: #d4d4dc;
   --rr-text-tertiary: #9a9aa5;
-  --rr-gradient: linear-gradient(135deg, #fe002a 0%, #ff4d6a 100%);
-  --rr-gradient-text: linear-gradient(90deg, #ff4d6a 0%, #fe002a 100%);
+  --rr-gradient: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  --rr-gradient-text: linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%);
   --rr-success: #12b76a;
   --rr-warning: #f79009;
   /* Lighter than the guide's #D92D20 so error text stays readable on ink */
@@ -85,7 +85,7 @@ h3 {
 
 /* Visible focus ring on all interactive elements */
 :focus-visible {
-  outline: 3px solid rgba(254, 0, 42, 0.4);
+  outline: 3px solid rgba(124, 58, 237, 0.4);
   outline-offset: 2px;
 }
 
@@ -141,8 +141,8 @@ select {
 .hero-glow {
   background-color: var(--rr-bg);
   background-image:
-    radial-gradient(ellipse 60% 55% at 100% 0%, rgba(254, 0, 42, 0.28), transparent 65%),
-    radial-gradient(ellipse 55% 55% at 0% 100%, rgba(254, 0, 42, 0.14), transparent 65%),
+    radial-gradient(ellipse 60% 55% at 100% 0%, rgba(124, 58, 237, 0.28), transparent 65%),
+    radial-gradient(ellipse 55% 55% at 0% 100%, rgba(124, 58, 237, 0.14), transparent 65%),
     linear-gradient(180deg, #0b0b0f 0%, #14090d 50%, #0b0b0f 100%);
   background-size: 130% 130%, 130% 130%, 100% 100%;
   background-repeat: no-repeat;
