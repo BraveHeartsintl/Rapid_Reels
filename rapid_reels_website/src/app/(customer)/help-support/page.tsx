@@ -9,6 +9,7 @@ import { Notice } from "@/components/ui/State";
 import { useUid } from "@/lib/auth/useUid";
 import { createSupportTicket } from "@/lib/data/queries";
 import { errorMessage } from "@/lib/format";
+import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/supportContact";
 
 export default function Page() {
   const router = useRouter();
@@ -35,6 +36,14 @@ export default function Page() {
   return (
     <div>
       <PageHeader title="Help & support" subtitle="Tell us what went wrong and we will get back to you." />
+      <a
+        href={SUPPORT_WHATSAPP_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mb-6 inline-flex w-full items-center justify-center rounded-2xl border border-[var(--rr-primary)] px-6 py-3 text-sm font-semibold text-[var(--rr-primary)]"
+      >
+        WhatsApp {SUPPORT_WHATSAPP_DISPLAY}
+      </a>
       <form onSubmit={submit} className="space-y-4">
         <Input label="Subject" placeholder="Booking issue" value={subject} onChange={(e) => setSubject(e.target.value)} required />
         <label className="flex flex-col gap-1.5 text-sm">

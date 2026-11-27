@@ -5,6 +5,7 @@ import { MarketingFooter, MarketingNav } from "@/components/layout/MarketingChro
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { SUPPORT_WHATSAPP_DISPLAY, SUPPORT_WHATSAPP_URL } from "@/lib/supportContact";
 
 const SUPPORT_EMAIL = "support@rapidreels.com";
 
@@ -20,9 +21,17 @@ export default function ContactPage() {
         <div className="mx-auto max-w-lg">
           <h1 className="text-4xl font-bold text-white">Contact</h1>
           <p className="mt-3 text-[var(--rr-text-secondary)]">
-            Send us a message and your email app will open with it ready to go. Signed-in customers can also raise a ticket from{" "}
+            Message us on WhatsApp, or send an email and your mail app will open with it ready to go. Signed-in customers can also raise a ticket from{" "}
             <a href="/help-support" className="text-[var(--rr-secondary)] underline">Help &amp; support</a>.
           </p>
+          <a
+            href={SUPPORT_WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-8 inline-flex w-full items-center justify-center rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+          >
+            WhatsApp {SUPPORT_WHATSAPP_DISPLAY}
+          </a>
           <form
             className="mt-8 space-y-4"
             onSubmit={(e) => {

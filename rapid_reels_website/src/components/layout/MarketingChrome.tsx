@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import { NavAuthActions } from "@/components/layout/NavAuthActions";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/supportContact";
 
 const links = [
   { href: "/how-it-works", label: "How it works" },
@@ -95,6 +96,11 @@ export function MarketingFooter() {
               <Link href="/contact" className="hover:text-white">
                 Contact
               </Link>
+            </li>
+            <li>
+              <a href={SUPPORT_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="hover:text-white">
+                WhatsApp
+              </a>
             </li>
           </ul>
         </div>

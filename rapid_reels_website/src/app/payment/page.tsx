@@ -12,7 +12,10 @@ import { createStripePaymentIntent, getBooking } from "@/lib/data/queries";
 import { fmtMoney } from "@/lib/format";
 import { useAsync, useQuery } from "@/lib/hooks";
 
-const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
+/** Public Stripe key. Env overrides this; the default matches the mobile app so Vercel works without the env var. */
+const publishableKey =
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+  "pk_live_51RdCZ7KPz48WhVEJdliENUwdUXbsSlk9b9Tv68LalEllYTJ1AabLu5GwC30eFXNZCTygHbkIydpWFij8PuNQx25e00Fj6wAbEo";
 
 function CheckoutForm({ bookingId, amountLabel }: { bookingId: string; amountLabel: string }) {
   const stripe = useStripe();
@@ -83,8 +86,6 @@ export default function Page() {
     >
       {query.ready && !bookingId ? (
         <Empty>No booking to pay for.</Empty>
-      ) : !publishableKey ? (
-        <Notice>Stripe is not configured. Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in .env.local.</Notice>
       ) : (
         <AsyncView state={state} empty="Booking not found." isEmpty={(d) => d === null}>
           {(data) => {
